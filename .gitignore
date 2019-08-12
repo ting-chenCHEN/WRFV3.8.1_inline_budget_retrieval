@@ -17,6 +17,7 @@ configure.wrf*
 *.backup
 *.f90
 rsync_exclude
+namelist.output
 
 Registry/Registry
 Registry/io_boilerplate_temporary.inc
