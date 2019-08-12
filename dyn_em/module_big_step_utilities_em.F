@@ -4529,6 +4529,96 @@ SUBROUTINE zero_tend ( tendency,                     &
 
 !-------------------------------------------------------------------------------
 
+SUBROUTINE zero_tend_all ( tendency1, tendency2,      &
+                           tendency3, tendency4,      &
+                           tendency5, tendency6,      &
+                           tendency7, tendency8,      &
+                           tendency9, tendency10,     &
+                           tendency11,tendency12,     &
+                           tendency13,tendency14,     &
+                           tendency15,tendency16,     &
+                           tendency17,tendency18,     &
+                           tendency19,tendency20,     &
+                           tendency21,tendency22,     &
+                           tendency23,tendency24,     &
+                           tendency25,tendency26,     &
+                           tendency27,                &
+                       ids, ide, jds, jde, kds, kde, &
+                       ims, ime, jms, jme, kms, kme, &
+                       its, ite, jts, jte, kts, kte )
+
+
+   IMPLICIT NONE
+   
+   ! Input data
+   
+   INTEGER ,                                   INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                                                                ims, ime, jms, jme, kms, kme, &
+                                                                its, ite, jts, jte, kts, kte
+
+   REAL , DIMENSION( ims:ime , kms:kme , jms:jme ) , INTENT(INOUT) :: tendency1, tendency2, &
+                                                                      tendency3, tendency4, &
+                                                                      tendency5, tendency6, &
+                                                                      tendency7, tendency8, &
+                                                                      tendency9, tendency10, &
+                                                                      tendency11,tendency12, &
+                                                                      tendency13,tendency14, &
+                                                                      tendency15,tendency16, &
+                                                                      tendency17,tendency18, &
+                                                                      tendency19,tendency20, &
+                                                                      tendency21,tendency22, &
+                                                                      tendency23,tendency24, &
+                                                                      tendency25,tendency26, &
+                                                                      tendency27
+
+   ! Local data
+   
+   INTEGER :: i, j, k, itf, jtf, ktf
+
+!<DESCRIPTION>
+!
+!  zero_tend sets the input tendency array to zero.
+!
+!</DESCRIPTION>
+
+      DO j = jts, jte
+      DO k = kts, kte
+      DO i = its, ite
+        tendency1(i,k,j) = 0.
+        tendency2(i,k,j) = 0.
+        tendency3(i,k,j) = 0.
+        tendency4(i,k,j) = 0.
+        tendency5(i,k,j) = 0.
+        tendency6(i,k,j) = 0.
+        tendency7(i,k,j) = 0.
+        tendency8(i,k,j) = 0.
+        tendency9(i,k,j) = 0.
+        tendency10(i,k,j) = 0.
+        tendency11(i,k,j) = 0.
+        tendency12(i,k,j) = 0.
+        tendency13(i,k,j) = 0.
+        tendency14(i,k,j) = 0.
+        tendency15(i,k,j) = 0.
+        tendency16(i,k,j) = 0.
+        tendency17(i,k,j) = 0.
+        tendency18(i,k,j) = 0.
+        tendency19(i,k,j) = 0.
+        tendency20(i,k,j) = 0.
+        tendency21(i,k,j) = 0.
+        tendency22(i,k,j) = 0.
+        tendency23(i,k,j) = 0.
+        tendency24(i,k,j) = 0.
+        tendency25(i,k,j) = 0.
+        tendency26(i,k,j) = 0.
+        tendency27(i,k,j) = 0.
+      ENDDO
+      ENDDO
+      ENDDO
+
+      END SUBROUTINE zero_tend_all
+
+!-------------------------------------------------------------------------------
+
 SUBROUTINE zero_tend2d( tendency,                     &
                        ids, ide, jds, jde, kds, kde, &
                        ims, ime, jms, jme, kms, kme, &

@@ -306,7 +306,41 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
                               rk_step, rk_order,               &
                               ids,ide, jds,jde, kds,kde,       &
                               ims,ime, jms,jme, kms,kme,       &
-                              its,ite, jts,jte, kts,kte       )
+                              its,ite, jts,jte, kts,kte,       &
+                              !Added by TC Chen 2018 ------- 
+                              dt,                              &   
+                              !accumulated input      
+                              ac_adv_u_tend, ac_pgf_u_tend_l,  &
+                              ac_pgf_u_tend_s, ac_cor_u_tend,  &
+                              ac_cuv_u_tend, ac_damp2_u_tend,  & 
+                              ac_diff2_u_tend,                 &                         
+                              ac_adv_v_tend, ac_pgf_v_tend_l,  &
+                              ac_pgf_v_tend_s, ac_cor_v_tend,  &
+                              ac_cuv_v_tend, ac_damp2_v_tend,  & 
+                              ac_diff2_v_tend,                 & 
+                              ac_adv_w_tend,                   &
+                              ac_pgbuoy_w_tend_l,              &
+                              ac_pgbuoy_w_tend_s,              &
+                              ac_damping_w_tend, ac_cor_w_tend,& 
+                              ac_cuv_w_tend, ac_damp2_w_tend,  &
+                              ac_damp3_w_tend, ac_diff2_w_tend,&
+                              ac_adv_t_tend_l, ac_adv_t_tend_s,&
+                              ac_damp2_t_tend, ac_diff2_t_tend,&
+                              !converted values 
+                              u_tend_adv, u_tend_pgf,          &
+                              u_tend_cor, u_tend_cuv,          &
+                              u_tend_damp2, u_tend_diff2,      &                     
+                              v_tend_adv, v_tend_pgf,          &
+                              v_tend_cor, v_tend_cuv,          &
+                              v_tend_damp2, v_tend_diff2,      &                     
+                              w_tend_adv, w_tend_pgbuoy,       &
+                              w_tend_damping,                  &
+                              w_tend_cor, w_tend_cuv,          &
+                              w_tend_damp2, w_tend_damp3,      &
+                              w_tend_diff2,                    &
+                              t_tend_adv, t_tend_diff2,        &
+                              t_tend_damp2                     &                     
+                                                               )
 
 
   IMPLICIT NONE  ! religion first
@@ -349,6 +383,39 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
                                                         msfvx, msfvy, &
                                                         msftx, msfty
 
+!Added by TC Chen 2018 -------    
+  REAL,   DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(INOUT) ::  &
+                                 ac_adv_u_tend, ac_pgf_u_tend_l,  &
+                                 ac_pgf_u_tend_s, ac_cor_u_tend,  &
+                                 ac_cuv_u_tend, ac_damp2_u_tend,  & 
+                                 ac_diff2_u_tend,                 &                         
+                                 ac_adv_v_tend, ac_pgf_v_tend_l,  &
+                                 ac_pgf_v_tend_s, ac_cor_v_tend,  &
+                                 ac_cuv_v_tend, ac_damp2_v_tend,  & 
+                                 ac_diff2_v_tend,                 & 
+                                 ac_adv_w_tend,                   &
+                                 ac_pgbuoy_w_tend_l,              &
+                                 ac_pgbuoy_w_tend_s,              &
+                                 ac_damping_w_tend, ac_cor_w_tend,& 
+                                 ac_cuv_w_tend, ac_damp2_w_tend,  &
+                                 ac_damp3_w_tend, ac_diff2_w_tend,&
+                                 ac_adv_t_tend_l, ac_adv_t_tend_s,&
+                                 ac_damp2_t_tend, ac_diff2_t_tend
+  REAL,   DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(  OUT) ::  &
+                                 u_tend_adv, u_tend_pgf,          &
+                                 u_tend_cor, u_tend_cuv,          &
+                                 u_tend_damp2, u_tend_diff2,      &                     
+                                 v_tend_adv, v_tend_pgf,          &
+                                 v_tend_cor, v_tend_cuv,          &
+                                 v_tend_damp2, v_tend_diff2,      &                     
+                                 w_tend_adv, w_tend_pgbuoy,       &
+                                 w_tend_damping,                  &
+                                 w_tend_cor, w_tend_cuv,          &
+                                 w_tend_damp2, w_tend_damp3,      &
+                                 w_tend_diff2,                    &
+                                 t_tend_adv,t_tend_diff2,         &
+                                 t_tend_damp2                               
+   REAL, INTENT(IN   ) :: dt
 
 ! local stuff
 
@@ -377,6 +444,21 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
   DO i = i_start, i_end
     ! v coupled with mx
     v_2(i,k,j) = (msfvx(i,j)*v_2(i,k,j) + v_save(i,k,j)*muv(i,j))/muvs(i,j)
+    ! ---Added by TC Chen 2018 -------------------------
+    IF (rk_step.eq. rk_order) THEN
+    v_tend_adv(i,k,j)=ac_adv_v_tend(i,k,j)*msfvx(i,j)/muvs(i,j)/dt
+    v_tend_pgf(i,k,j)=(ac_pgf_v_tend_l(i,k,j)+ac_pgf_v_tend_s(i,k,j))*msfvx(i,j)/muvs(i,j)/dt
+    v_tend_cor(i,k,j)=ac_cor_v_tend(i,k,j)*msfvx(i,j)/muvs(i,j)/dt
+    v_tend_cuv(i,k,j)=ac_cuv_v_tend(i,k,j)*msfvx(i,j)/muvs(i,j)/dt
+    v_tend_damp2(i,k,j)=ac_damp2_v_tend(i,k,j)*msfvx(i,j)/muvs(i,j)/dt
+    v_tend_diff2(i,k,j)=ac_diff2_v_tend(i,k,j)*msfvx(i,j)/muvs(i,j)/dt
+    ENDIF
+    IF (i.eq.2 .and. k.eq.10 .and. j.eq. 100) THEN
+    print*,'i=2,k=10,j=100: pgf_l=','rk_step=',rk_step
+    print*,'ac_v_pgf_l=',ac_pgf_v_tend_l(i,k,j)*msfvx(i,j)/dt
+    print*,'ac_v_pgf_s=',ac_pgf_v_tend_s(i,k,j)*msfvx(i,j)/dt
+    ENDIF
+    ! --------------------------------------------------
   ENDDO
   ENDDO
   ENDDO
@@ -386,6 +468,16 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
   DO i = i_start, i_endu
     ! u coupled with my
     u_2(i,k,j) = (msfuy(i,j)*u_2(i,k,j) + u_save(i,k,j)*muu(i,j))/muus(i,j)
+    ! ---Added by TC Chen 2018 -------------------------
+    IF (rk_step.eq. rk_order) THEN
+    u_tend_adv(i,k,j)=ac_adv_u_tend(i,k,j)*msfuy(i,j)/muus(i,j)/dt
+    u_tend_pgf(i,k,j)=(ac_pgf_u_tend_l(i,k,j)+ac_pgf_u_tend_s(i,k,j))*msfuy(i,j)/muus(i,j)/dt
+    u_tend_cor(i,k,j)=ac_cor_u_tend(i,k,j)*msfuy(i,j)/muus(i,j)/dt
+    u_tend_cuv(i,k,j)=ac_cuv_u_tend(i,k,j)*msfuy(i,j)/muus(i,j)/dt
+    u_tend_damp2(i,k,j)=ac_damp2_u_tend(i,k,j)*msfuy(i,j)/muus(i,j)/dt
+    u_tend_diff2(i,k,j)=ac_diff2_u_tend(i,k,j)*msfuy(i,j)/muus(i,j)/dt 
+    ENDIF
+    ! --------------------------------------------------
   ENDDO
   ENDDO
   ENDDO
@@ -397,6 +489,18 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
     w_2(i,k,j) = (msfty(i,j)*w_2(i,k,j) + w_save(i,k,j)*mut(i,j))/muts(i,j)
     ph_2(i,k,j) = ph_2(i,k,j) + ph_save(i,k,j)
     ww(i,k,j) = ww(i,k,j) + ww1(i,k,j)
+    ! ---Added by TC Chen 2018 -------------------------
+    IF (rk_step.eq. rk_order) THEN
+    w_tend_adv(i,k,j)=ac_adv_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    w_tend_pgbuoy(i,k,j)=(ac_pgbuoy_w_tend_l(i,k,j)+ac_pgbuoy_w_tend_s(i,k,j))*msfty(i,j)/muts(i,j)/dt
+    w_tend_damping(i,k,j)=ac_damping_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    w_tend_cor(i,k,j)=ac_cor_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    w_tend_cuv(i,k,j)=ac_cuv_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    w_tend_damp2(i,k,j)=ac_damp2_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    w_tend_damp3(i,k,j)=ac_damp3_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    w_tend_diff2(i,k,j)=ac_diff2_w_tend(i,k,j)*msfty(i,j)/muts(i,j)/dt
+    ENDIF
+    ! --------------------------------------------------
   ENDDO
   ENDDO
   ENDDO
@@ -425,6 +529,13 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
     DO i = i_start, i_end
       t_2(i,k,j) = (t_2(i,k,j) - dts*number_of_small_timesteps*mut(i,j)*h_diabatic(i,k,j) &
                     + t_save(i,k,j)*mut(i,j))/muts(i,j)
+    ! ---Added by TC Chen 2018 -------------------------
+    IF (rk_step.eq. rk_order) THEN
+    t_tend_adv(i,k,j)=(ac_adv_t_tend_l(i,k,j)+ac_adv_t_tend_s(i,k,j))/muts(i,j)/dt
+    t_tend_damp2(i,k,j)=ac_damp2_t_tend(i,k,j)/muts(i,j)/dt
+    t_tend_diff2(i,k,j)=ac_diff2_t_tend(i,k,j)/muts(i,j)/dt
+    ENDIF
+    ! --------------------------------------------------
     ENDDO
     ENDDO
     ENDDO
@@ -685,7 +796,25 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
                         non_hydrostatic, top_lid,      &
                         ids, ide, jds, jde, kds, kde,  &
                         ims, ime, jms, jme, kms, kme,  &
-                        its, ite, jts, jte, kts, kte  )
+                        its, ite, jts, jte, kts, kte,  &
+                        ! Added by TC Chen 2018-------        
+                        ! input
+                        rk_step, rk_order,             &
+                        adv_ru_tend, adv_rv_tend,      &
+                        pgf_ru_tend, pgf_rv_tend,      &
+                        cor_ru_tend, cor_rv_tend,      &
+                        cuv_ru_tend, cuv_rv_tend,      &
+                        damp2_ru_tendf, damp2_rv_tendf,&
+                        diff2_ru_tendf, diff2_rv_tendf,&
+                        ! added (accumulated) values  
+                        ac_adv_u_tend, ac_adv_v_tend,     &
+                        ac_pgf_u_tend_l, ac_pgf_v_tend_l, &
+                        ac_pgf_u_tend_s, ac_pgf_v_tend_s, &
+                        ac_cor_u_tend, ac_cor_v_tend,     &
+                        ac_cuv_u_tend, ac_cuv_v_tend,     &
+                        ac_damp2_u_tend, ac_damp2_v_tend, &
+                        ac_diff2_u_tend, ac_diff2_v_tend  &
+                                                       )
 
 
 
@@ -744,8 +873,31 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
                                                                 cf2,    &
                                                                 cf3,    &
                                                                 emdiv
-    
+   
+!  ----Added by TC Chen 2018 -------------------------------
+      INTEGER,      INTENT(IN   )    :: rk_step, rk_order
 
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),   &
+            INTENT(IN   ) ::                           &
+                        adv_ru_tend, adv_rv_tend,      &
+                        pgf_ru_tend, pgf_rv_tend,      &
+                        cor_ru_tend, cor_rv_tend,      &
+                        cuv_ru_tend, cuv_rv_tend,      &
+                        damp2_ru_tendf, damp2_rv_tendf,&
+                        diff2_ru_tendf, diff2_rv_tendf 
+
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),      &
+            INTENT(  INOUT) ::                            &
+                        ac_adv_u_tend, ac_adv_v_tend,     &
+                        ac_pgf_u_tend_l, ac_pgf_v_tend_l, &
+                        ac_pgf_u_tend_s, ac_pgf_v_tend_s, &
+                        ac_cor_u_tend, ac_cor_v_tend,     &
+                        ac_cuv_u_tend, ac_cuv_v_tend,     &
+                        ac_damp2_u_tend, ac_damp2_v_tend, &
+                        ac_diff2_u_tend, ac_diff2_v_tend  
+      ! Local 
+      REAL                      :: acoustic_pgf_u, acoustic_pgf_v
+! ----------------------------------------------------------
 !  Local 3d array from the stack (note tile size)
 
       REAL, DIMENSION (its:ite, kts:kte) :: dpn, dpxy
@@ -857,6 +1009,17 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
    DO k = k_start, k_end
    DO i = i_start_u_tend, i_end_u_tend
      u(i,k,j) = u(i,k,j) + dts*ru_tend(i,k,j)
+     ! ----Added by TC Chen -------LARGE-STEP FORCINGS--------
+       IF (rk_step.eq.rk_order) THEN
+       ac_adv_u_tend(i,k,j)   = ac_adv_u_tend(i,k,j)+adv_ru_tend(i,k,j)*dts
+       ac_pgf_u_tend_l(i,k,j) = ac_pgf_u_tend_l(i,k,j)+pgf_ru_tend(i,k,j)*dts
+       ac_cor_u_tend(i,k,j)   = ac_cor_u_tend(i,k,j)+cor_ru_tend(i,k,j)*dts
+       ac_cuv_u_tend(i,k,j)   = ac_cuv_u_tend(i,k,j)+cuv_ru_tend(i,k,j)*dts
+       ! ru_tend=ru_tendf/msfuy
+       ac_damp2_u_tend(i,k,j) = ac_damp2_u_tend(i,k,j)+damp2_ru_tendf(i,k,j)/msfuy(i,j)*dts
+       ac_diff2_u_tend(i,k,j) = ac_diff2_u_tend(i,k,j)+diff2_ru_tendf(i,k,j)/msfuy(i,j)*dts 
+       ENDIF
+     ! -------------------------------------------------------
    ENDDO
    ENDDO
 
@@ -933,6 +1096,12 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
    DO k = k_start, k_end
      DO i = i_start_up, i_end_up
        u(i,k,j)=u(i,k,j)-dts*cqu(i,k,j)*dpxy(i,k)+mudf_xy(i) 
+       ! ----Added by TC Chen -------ACOUSTIC-STEP FORCINGS--------
+       acoustic_pgf_u=-dts*cqu(i,k,j)*dpxy(i,k)+mudf_xy(i) 
+       IF (rk_step.eq.rk_order) THEN
+       ac_pgf_u_tend_s(i,k,j) = ac_pgf_u_tend_s(i,k,j)+acoustic_pgf_u
+       ENDIF
+       ! ----------------------------------------------------------
      ENDDO
    ENDDO
 
@@ -946,6 +1115,22 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
    DO k = k_start, k_end
    DO i = i_start, i_end
      v(i,k,j) = v(i,k,j) + dts*rv_tend(i,k,j)
+     ! ----Added by TC Chen -------LARGE-STEP FORCINGS--------
+       IF (rk_step.eq.rk_order) THEN
+       ac_adv_v_tend(i,k,j)   = ac_adv_v_tend(i,k,j)+adv_rv_tend(i,k,j)*dts
+       ac_pgf_v_tend_l(i,k,j) = ac_pgf_v_tend_l(i,k,j)+pgf_rv_tend(i,k,j)*dts
+       ac_cor_v_tend(i,k,j)   = ac_cor_v_tend(i,k,j)+cor_rv_tend(i,k,j)*dts
+       ac_cuv_v_tend(i,k,j)   = ac_cuv_v_tend(i,k,j)+cuv_rv_tend(i,k,j)*dts
+       ! rv_tend=rv_tendf*msfvx_inv
+       ac_damp2_v_tend(i,k,j) = ac_damp2_v_tend(i,k,j)+damp2_rv_tendf(i,k,j)*msfvx_inv(i,j)*dts
+       ac_diff2_v_tend(i,k,j) = ac_diff2_v_tend(i,k,j)+diff2_rv_tendf(i,k,j)*msfvx_inv(i,j)*dts 
+       ENDIF
+       IF (i.eq.2 .and. k.eq.10 .and. j.eq. 100) THEN
+       print*,'i=2,k=10,j=100: pgf_l=','rk_step=',rk_step
+       print*,'pgf_rv_tend (not dvidiede by mu) =',pgf_rv_tend(i,k,j)*dts*msfvx(i,j)/3.
+       print*,'=================================================='
+       ENDIF
+     ! -------------------------------------------------------
    ENDDO
    ENDDO
 
@@ -1027,6 +1212,12 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
      DO k = k_start, k_end
        DO i = i_start, i_end
          v(i,k,j)=v(i,k,j)-dts*cqv(i,k,j)*dpxy(i,k)+mudf_xy(i) 
+         ! ----Added by TC Chen -------ACOUSTIC-STEP FORCINGS--------
+          acoustic_pgf_v=-dts*cqv(i,k,j)*dpxy(i,k)+mudf_xy(i) 
+          IF (rk_step.eq.rk_order) THEN
+          ac_pgf_v_tend_s(i,k,j) = ac_pgf_v_tend_s(i,k,j)+acoustic_pgf_v
+          ENDIF
+         ! ----------------------------------------------------------
        ENDDO
      ENDDO
    END IF
@@ -1070,7 +1261,15 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
                          step, config_flags,                  &
                          ids, ide, jds, jde, kds, kde,        &
                          ims, ime, jms, jme, kms, kme,        &
-                         its, ite, jts, jte, kts, kte        )
+                         its, ite, jts, jte, kts, kte,        &        
+                        ! Added by TC Chen 2018-------        
+                        ! input
+                         rk_step, rk_order,                   &
+                         adv_t_tend, damp2_t_tendf,           &
+                         diff2_t_tendf,                       & 
+                        ! added (accumulated) values  
+                         ac_adv_t_tend_l, ac_adv_t_tend_s,    &
+                         ac_damp2_t_tend, ac_diff2_t_tend     )
 
   IMPLICIT NONE  ! religion first
 
@@ -1131,6 +1330,22 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
                                                             rdy,    &
                                                             dts,    &
                                                             epssm
+!  ----Added by TC Chen 2018 -------------------------------
+
+      INTEGER,      INTENT(IN   )    :: rk_step, rk_order
+
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),   &
+            INTENT(IN   ) ::                           &
+                        adv_t_tend, damp2_t_tendf,     & 
+                        diff2_t_tendf       
+
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),      &
+            INTENT(  INOUT) ::                            &
+                        ac_adv_t_tend_l, ac_adv_t_tend_s, &
+                        ac_damp2_t_tend, ac_diff2_t_tend
+      ! Local 
+      REAL :: acoustic_adv_t
+! ----------------------------------------------------------
 
 !  Local arrays from the stack (note tile size)
 
@@ -1259,6 +1474,24 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
      DO i=i_start, i_end
        t_ave(i,k,j) = t(i,k,j)
        t   (i,k,j) = t(i,k,j) + msfty(i,j)*dts*ft(i,k,j)
+       ! ----Added by TC Chen -------LARGE-STEP FORCINGS--------
+       IF (rk_step.eq.rk_order) THEN
+          !IF (i.eq.2 .and. k.eq.10 .and. j.eq. 100) THEN
+          !print*,'before adding: ac_adv_t_tend_l',ac_adv_t_tend_l(i,k,j)
+          !ENDIF
+       ac_adv_t_tend_l(i,k,j)=ac_adv_t_tend_l(i,k,j)+adv_t_tend(i,k,j)*dts*msfty(i,j)
+          !IF (i.eq.2 .and. k.eq.10 .and. j.eq. 100) THEN
+          !print*,'rk_step=',rk_step
+          !print*,'acoustic step=',step,'dts=',dts,'ft=',ft(i,k,j)
+          !print*,'adv_t_tend',adv_t_tend(i,k,j),'*dts*msfty=',adv_t_tend(i,k,j)*dts*msfty(i,j)
+          !print*,'ac_adv_t_tend_l',ac_adv_t_tend_l(i,k,j)
+          !print*,'all extracted ft=',adv_t_tend(i,k,j)+(damp2_t_tendf(i,k,j)+diff2_t_tendf(i,k,j))/msfty(i,j)
+          !ENDIF
+       ! t_tend=t_tendf/msfty
+       ac_damp2_t_tend(i,k,j)=ac_damp2_t_tend(i,k,j)+damp2_t_tendf(i,k,j)*dts
+       ac_diff2_t_tend(i,k,j)=ac_diff2_t_tend(i,k,j)+diff2_t_tendf(i,k,j)*dts
+       ENDIF
+       ! -------------------------------------------------------   
      END DO
      END DO
    ENDDO   
@@ -1293,6 +1526,25 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
               ( u(i+1,k,j)*(t_1(i+1,k,j)+t_1(i  ,k,j))     &
                -u(i  ,k,j)*(t_1(i  ,k,j)+t_1(i-1,k,j)) ) ) &
              + rdnw(k)*( wdtn(i,k+1)-wdtn(i,k) ) )       
+         ! ----Added by TC Chen -------ACOUSTIC-STEP FORCINGS--------
+          acoustic_adv_t=- dts*msfty(i,j)*(              &
+                          ! multiplication by mx needed for RHS terms 1 & 2
+                          msftx(i,j)*(                     &
+               .5*rdy*                                     &
+              ( v(i,k,j+1)*(t_1(i,k,j+1)+t_1(i,k, j ))     &
+               -v(i,k,j  )*(t_1(i,k, j )+t_1(i,k,j-1)) )   &
+             + .5*rdx*                                     &
+              ( u(i+1,k,j)*(t_1(i+1,k,j)+t_1(i  ,k,j))     &
+               -u(i  ,k,j)*(t_1(i  ,k,j)+t_1(i-1,k,j)) ) ) &
+             + rdnw(k)*( wdtn(i,k+1)-wdtn(i,k) ) )       
+          IF (rk_step.eq.rk_order) THEN
+          ac_adv_t_tend_s(i,k,j) = ac_adv_t_tend_s(i,k,j)+acoustic_adv_t
+             !IF (i.eq.2 .and. k.eq.10 .and. j.eq. 100) THEN
+             !print*,'acoustic_adv_t=',acoustic_adv_t
+             !print*,'ac_adv_t_tend_s=',ac_adv_t_tend_s(i,k,j)
+             !ENDIF
+          ENDIF
+         ! ----------------------------------------------------------
      ENDDO
      ENDDO
 
@@ -1316,7 +1568,24 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
                       config_flags, top_lid,      &
                       ids,ide, jds,jde, kds,kde,  & ! domain dims
                       ims,ime, jms,jme, kms,kme,  & ! memory dims
-                      its,ite, jts,jte, kts,kte  )  ! tile   dims
+                      its,ite, jts,jte, kts,kte,  &  ! tile   dims
+                      ! Added by TC Chen 2018 ----
+                      ! input
+                      rk_step, rk_order,           &
+                      adv_rw_tend, pgbuoy_rw_tend, &
+                      damping_rw_tend, cor_rw_tend,&
+                      cuv_rw_tend, damp2_rw_tendf, &
+                      diff2_rw_tendf,              &
+                      ! added (accumulated) values
+                      ac_adv_w_tend,               &
+                      ac_pgbuoy_w_tend_l,          &
+                      ac_pgbuoy_w_tend_s,          &
+                      ac_damping_w_tend,           &
+                      ac_cor_w_tend, ac_cuv_w_tend,&
+                      ac_damp2_w_tend,             &
+                      ac_damp3_w_tend,             &
+                      ac_diff2_w_tend              )
+                      
 
 ! We have used msfty for msft_inv but have not thought through w equation
 ! pieces properly yet, so we will have to hope that it is okay
@@ -1385,6 +1654,33 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
                                 cf3,     &
                                 t0,      &
                                 epssm
+! --- Added by TC Chen 2018 --------------------------------------
+      
+      INTEGER,      INTENT(IN   )    :: rk_step, rk_order
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),    &
+            INTENT(IN   ) ::               adv_rw_tend, &
+                                        pgbuoy_rw_tend, &
+                                       damping_rw_tend, &
+                                           cor_rw_tend, &
+                                           cuv_rw_tend, &
+                                        damp2_rw_tendf, & 
+                                        diff2_rw_tendf 
+     
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),    &
+            INTENT(INOUT) ::             ac_adv_w_tend, &
+                                    ac_pgbuoy_w_tend_l, &
+                                    ac_pgbuoy_w_tend_s, &
+                                     ac_damping_w_tend, &
+                                         ac_cor_w_tend, &
+                                         ac_cuv_w_tend, &
+                                       ac_damp2_w_tend, &
+                                       ac_damp3_w_tend, &
+                                       ac_diff2_w_tend
+      ! Local
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme )::    &
+                                          w_bef_adjust 
+      REAL :: w_ori, acoustic_pgbuoy_w 
+!-----------------------------------------------------------------
 
 !  Stack based 3d data, tile size.
 
@@ -1548,6 +1844,36 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
              (c2a(i,k  ,j)*alt(i,k  ,j)*t_2ave(i,k  ,j)            &
              -c2a(i,k-1,j)*alt(i,k-1,j)*t_2ave(i,k-1,j))           &
               - muave(i,j))
+                  
+        !---Added by TC Chen 2018 ----------------------------------- 
+        acoustic_pgbuoy_w=+ msft_inv(i)*cqw(i,k,j)*(               &
+            +.5*dts*g*mut_inv(i)*rdn(k)*                           &
+             (c2a(i,k  ,j)*rdnw(k  )                               &
+        *((1.+epssm)*(rhs(i,k+1  )-rhs(i,k    ))                   &
+         +(1.-epssm)*(ph(i,k+1,j)-ph(i,k  ,j)))                    &
+             -c2a(i,k-1,j)*rdnw(k-1)                               &
+        *((1.+epssm)*(rhs(i,k    )-rhs(i,k-1  ))                   &
+         +(1.-epssm)*(ph(i,k  ,j)-ph(i,k-1,j)))))                  &
+
+                +dts*g*msft_inv(i)*(rdn(k)*                        &
+             (c2a(i,k  ,j)*alt(i,k  ,j)*t_2ave(i,k  ,j)            &
+             -c2a(i,k-1,j)*alt(i,k-1,j)*t_2ave(i,k-1,j))           &
+              - muave(i,j))
+        !----
+        IF (rk_step.eq.rk_order) THEN
+        !--- LARGE-STEP FORCINGS----------
+        ac_adv_w_tend(i,k,j)=ac_adv_w_tend(i,k,j)+adv_rw_tend(i,k,j)*dts
+        ac_pgbuoy_w_tend_l(i,k,j)=ac_pgbuoy_w_tend_l(i,k,j)+pgbuoy_rw_tend(i,k,j)*dts
+        ac_damping_w_tend(i,k,j)=ac_damping_w_tend(i,k,j)+damping_rw_tend(i,k,j)*dts
+        ac_cor_w_tend(i,k,j)=ac_cor_w_tend(i,k,j)+cor_rw_tend(i,k,j)*dts
+        ac_cuv_w_tend(i,k,j)=ac_cuv_w_tend(i,k,j)+cuv_rw_tend(i,k,j)*dts
+        !rw_tend=rw_tendf/msfty
+        ac_damp2_w_tend(i,k,j)=ac_damp2_w_tend(i,k,j)+damp2_rw_tendf(i,k,j)/msfty(i,j)*dts
+        ac_diff2_w_tend(i,k,j)=ac_diff2_w_tend(i,k,j)+diff2_rw_tendf(i,k,j)/msfty(i,j)*dts
+        !--- ACOUSTIC-STEP FORCINGS----------
+        ac_pgbuoy_w_tend_s(i,k,j)=ac_pgbuoy_w_tend_s(i,k,j)+acoustic_pgbuoy_w
+        ENDIF
+        !---------------------------------------------------------
       ENDDO
     ENDDO
 
@@ -1562,8 +1888,41 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
          -dts*g*(2.*rdnw(k-1)*                                      &
                    c2a(i,k-1,j)*alt(i,k-1,j)*t_2ave(i,k-1,j)        &
               + muave(i,j)) )
+        !---Added by TC Chen 2018 ----------------------------------- 
+        acoustic_pgbuoy_w= +dts*rw_tend(i,k,j)                         &
+           +msft_inv(i)*(                                        &
+         -.5*dts*g*mut_inv(i)*rdnw(k-1)**2*2.*c2a(i,k-1,j)            &
+             *((1.+epssm)*(rhs(i,k  )-rhs(i,k-1  ))                 &
+              +(1.-epssm)*(ph(i,k,j)-ph(i,k-1,j)))                  &
+         -dts*g*(2.*rdnw(k-1)*                                      &
+                   c2a(i,k-1,j)*alt(i,k-1,j)*t_2ave(i,k-1,j)        &
+              + muave(i,j)) )
+        !----
+        IF (rk_step.eq.rk_order) THEN
+        !--- LARGE-STEP FORCINGS----------
+        ac_adv_w_tend(i,k,j)=ac_adv_w_tend(i,k,j)+adv_rw_tend(i,k,j)*dts
+        ac_pgbuoy_w_tend_l(i,k,j)=ac_pgbuoy_w_tend_l(i,k,j)+pgbuoy_rw_tend(i,k,j)*dts
+        ac_damping_w_tend(i,k,j)=ac_damping_w_tend(i,k,j)+damping_rw_tend(i,k,j)*dts
+        ac_cor_w_tend(i,k,j)=ac_cor_w_tend(i,k,j)+cor_rw_tend(i,k,j)*dts
+        ac_cuv_w_tend(i,k,j)=ac_cuv_w_tend(i,k,j)+cuv_rw_tend(i,k,j)*dts
+        !rw_tend=rw_tendf/msfty
+        ac_damp2_w_tend(i,k,j)=ac_damp2_w_tend(i,k,j)+damp2_rw_tendf(i,k,j)/msfty(i,j)*dts
+        ac_diff2_w_tend(i,k,j)=ac_diff2_w_tend(i,k,j)+diff2_rw_tendf(i,k,j)/msfty(i,j)*dts
+        !--- ACOUSTIC-STEP FORCINGS----------
+        ac_pgbuoy_w_tend_s(i,k,j)=ac_pgbuoy_w_tend_s(i,k,j)+acoustic_pgbuoy_w
+        ENDIF
+        !---------------------------------------------------------
+          
        if(top_lid)w(i,k,j) = 0.
     ENDDO
+
+! Added by TC Chen 2018------------
+   DO k=1,k_end+1
+   DO i=i_start, i_end
+      w_bef_adjust(i,k,j)=w(i,k,j)
+   ENDDO
+   ENDDO
+! ---------------------------------
 
     DO k=2,k_end+1
     DO i=i_start, i_end
@@ -1576,10 +1935,24 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
        w (i,k,j)=w (i,k,j)-gamma(i,k,j)*w(i,k+1,j)
     ENDDO
     ENDDO
+! Added by TC Chen----------------------
+   IF(rk_step.eq.rk_order) THEN
+   DO k=1,k_end+1
+   DO i=i_start, i_end
+       ac_pgbuoy_w_tend_s(i,k,j)=ac_pgbuoy_w_tend_s(i,k,j)+(w(i,k,j)-w_bef_adjust(i,k,j))
+   ENDDO
+   ENDDO
+   ENDIF
+! --------------------------------------
 
     IF (config_flags%damp_opt .eq. 3) THEN
       DO k=k_end+1,2,-1
       DO i=i_start, i_end
+          ! Added by TC Chen 2018 -----------------
+          IF(rk_step.eq.rk_order) THEN
+          w_ori=w(i,k,j)
+          ENDIF
+          ! ---------------------------------------
           htop=(ph_1(i,k_end+1,j)+phb(i,k_end+1,j))/g
           hk=(ph_1(i,k,j)+phb(i,k,j))/g
           hbot=htop-hdepth
@@ -1588,6 +1961,11 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
             dampwt(k) = dampmag*sin(0.5*pi*(hk-hbot)/hdepth)*sin(0.5*pi*(hk-hbot)/hdepth)
           endif
           w(i,k,j) = (w(i,k,j) - dampwt(k)*mut(i,j)*w_save(i,k,j))/(1.+dampwt(k))
+          ! Added by TC Chen 2018 -----------------
+          IF(rk_step.eq.rk_order) THEN
+          ac_damp3_w_tend(i,k,j)=ac_damp3_w_tend(i,k,j)+(w(i,k,j)-w_ori)
+          ENDIF
+          ! ---------------------------------------
       ENDDO
       ENDDO
     ENDIF

@@ -15,6 +15,7 @@ CONTAINS
                                    moist, chem, tracer, scalar,         &
                                    th_phy, pi_phy, p_phy, rho_phy,      & 
                                    p8w, t8w, dz8w,                      &
+                                   muus,muvs,muts,                      & !Added by TC Chen 2018
                                    curr_secs2,                          &
                                    diag_flag,                           &
                                    ids,  ide,  jds,  jde,  kds,  kde,   &
@@ -96,6 +97,11 @@ CONTAINS
                                                                            dz8w    , &
                                                                            p8w     , &
                                                                            t8w
+      ! Added by TC Chen 2018 ------
+      REAL , DIMENSION(ims:ime,jms:jme)            , INTENT(IN) ::         muus    , &
+                                                                           muvs    , &
+                                                                           muts
+      ! ------
 
       !  Time (s) since the beginning of the restart.
 
@@ -151,6 +157,7 @@ CONTAINS
                                 moist, chem, tracer, scalar,         &
                                 th_phy, pi_phy, p_phy, rho_phy,      & 
                                 p8w, t8w, dz8w,                      &
+                                muus, muvs, muts,                    & !Added by TC Chen 2018
                                 curr_secs2,                          &
                                 diag_flag,                           &
                                 ids,  ide,  jds,  jde,  kds,  kde,   &

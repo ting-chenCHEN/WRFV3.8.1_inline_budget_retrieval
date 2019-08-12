@@ -32,6 +32,11 @@ CONTAINS
                              , imsy,imey,jmsy,jmey,kmsy,kmey    &
                              , ipsy,ipey,jpsy,jpey,kpsy,kpey    &
                              , k_start , k_end                  &
+                             ! Added by TC Chen 2018             
+                             , diff2_t_tendf                    &
+                             , diff2_ru_tendf                   &
+                             , diff2_rv_tendf                   &
+                             , diff2_rw_tendf                   &
                             )
     USE module_state_description
     USE module_model_constants
@@ -110,6 +115,19 @@ CONTAINS
     REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(INOUT) :: ph_tendf
     REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(INOUT) :: t_tendf
     REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(INOUT) :: tke_tend
+!---Added by TC Chen 2019 ---------------
+    REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(  OUT) :: diff2_t_tendf
+    REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(  OUT) :: diff2_ru_tendf
+    REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(  OUT) :: diff2_rv_tendf
+    REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme), INTENT(  OUT) :: diff2_rw_tendf
+   !Local 
+    REAL    ,DIMENSION(ims:ime,kms:kme,jms:jme) :: ru_tendf_old, &
+                                                   rv_tendf_old, &
+                                                   rw_tendf_old, &
+                                                    t_tendf_old
+    INTEGER                             :: i, j, k
+!----------------------------------------
+
 
     REAL    ,DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: mu_tendf
 
@@ -684,6 +702,9 @@ BENCH_END(update_phy_ten_tim)
 
        IF ( (config_flags%damp_opt == 101) .OR. &
             (config_flags%damp_opt == 103)      ) THEN
+         !tested by TC ----
+         print*,'------------>damptop activated !'
+         !-----------------
          !$OMP PARALLEL DO   &
          !$OMP PRIVATE ( ij )
          DO ij = 1 , grid%num_tiles
@@ -739,6 +760,25 @@ BENCH_END(tke_rhs_tim)
 ! (keep this order)
 
        IF(config_flags%diff_opt .eq. 2) THEN
+
+!Added by TC Chen 2019 ------------------------
+        DO ij = 1 , grid%num_tiles
+
+        DO j=grid%j_start(ij),grid%j_end(ij)
+        DO i=grid%i_start(ij),grid%i_end(ij)
+
+           DO k = k_start, k_end
+              ru_tendf_old(i,k,j)=ru_tendf(i,k,j)
+              rv_tendf_old(i,k,j)=rv_tendf(i,k,j)
+              rw_tendf_old(i,k,j)=rw_tendf(i,k,j)
+              t_tendf_old(i,k,j) =t_tendf(i,k,j)
+           ENDDO
+        ENDDO
+        ENDDO
+
+        ENDDO
+!----------------------------------------------
+
 
          IF (config_flags%bl_pbl_physics .eq. 0) THEN
 
@@ -807,6 +847,24 @@ BENCH_START(hor_diff_tim)
          ENDDO
          !$OMP END PARALLEL DO
 BENCH_END(hor_diff_tim)
+
+! ----Added by TC Chen 2019 ---------------------
+        DO ij = 1 , grid%num_tiles
+
+        DO j=grid%j_start(ij),grid%j_end(ij)
+        DO i=grid%i_start(ij),grid%i_end(ij)
+
+           DO k = k_start, k_end
+              diff2_ru_tendf(i,k,j)=ru_tendf(i,k,j)-ru_tendf_old(i,k,j)
+              diff2_rv_tendf(i,k,j)=rv_tendf(i,k,j)-rv_tendf_old(i,k,j)
+              diff2_rw_tendf(i,k,j)=rw_tendf(i,k,j)-rw_tendf_old(i,k,j)
+              diff2_t_tendf(i,k,j) =t_tendf(i,k,j)-t_tendf_old(i,k,j)
+           ENDDO
+        ENDDO
+        ENDDO
+
+        ENDDO
+!------------------------------------------------
        ENDIF
 
        IF ( grid%obs_nudge_opt .EQ. 1 .AND. grid%xtime <= grid%fdda_end ) THEN

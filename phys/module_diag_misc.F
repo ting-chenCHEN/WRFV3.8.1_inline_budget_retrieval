@@ -12,6 +12,141 @@ MODULE module_diag_misc
       PRIVATE :: WGAMMA
       PRIVATE :: GAMMLN
 CONTAINS
+   !----Added by TC Chen 2018 July ------------------------------------------------
+   ! Note that the diagnose below does NOT include map projection modifciation, which 
+   ! should be fine for IDEALIZED SIMULATION, but not for real case. 
+   SUBROUTINE diagnose_tend_dt (                                &
+                      th_tend,      th_new,    th_old,          &
+                      u_tend,        u_new,     u_old,          &
+                      v_tend,        v_new,     v_old,          &
+                      w_tend,        w_new,     w_old,          &
+                      !input
+                      th, alt, al, u, v, w,                     &
+                      muus, muus_old, muvs, muvs_old,           &
+                      muts, muts_old,                           &                      
+                      dt, dx, dy,                               &
+                      ids,ide, jds,jde, kds,kde,                &
+                      ims,ime, jms,jme, kms,kme,                &
+                      ips,ipe, jps,jpe, kps,kpe,                & ! patch  dims
+                      i_start,i_end,j_start,j_end,kts,kte,      &
+                      num_tiles, itimestep                      &
+                                                                )
+   IMPLICIT NONE 
+   INTEGER,      INTENT(IN   )    ::                             &
+                                      ids,ide, jds,jde, kds,kde, &
+                                      ims,ime, jms,jme, kms,kme, &
+                                      ips,ipe, jps,jpe, kps,kpe, &
+                                                        kts,kte, &
+                                                      num_tiles
+
+            
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                 & 
+         INTENT(IN ) ::                                      th, &
+                                                            alt, &
+                                                             al, &
+                                                              u, &
+                                                              v, &
+                                                              w
+                                                         
+
+   INTEGER, DIMENSION(num_tiles), INTENT(IN) ::   i_start,i_end,j_start,j_end
+
+   REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),                &
+          INTENT(INOUT) ::                                       &
+                                                  th_tend,       &
+                                                  th_new,        &
+                                                  th_old,        &
+                                                  u_tend,        &
+                                                  u_new,         &
+                                                  u_old,         &
+                                                  v_tend,        &
+                                                  v_new,         &
+                                                  v_old,         &
+                                                  w_tend,        &
+                                                  w_new,         &
+                                                  w_old        
+                                                     
+   REAL, DIMENSION( ims:ime , jms:jme ),                         &
+          INTENT(IN) ::                           muus,          &
+                                                  muvs,          &
+                                                  muts
+   REAL, DIMENSION( ims:ime , jms:jme ),                         &
+          INTENT(INOUT)::                         muus_old,      &
+                                                  muvs_old,      &
+                                                  muts_old
+                                                      
+   INTEGER,  INTENT(IN   ) :: itimestep
+   REAL,  INTENT(IN   ) :: DT,DX,DY
+   INTEGER   i,j,ij,k
+   INTEGER   k_start,k_end 
+
+!   DO k=kds,kde !why kds, kde? but not kms, kme? Andres: memory indices are only used for declarations. 
+!   For the rest, use the domain or tiles indices (the latter for openmp parallelization) 
+   k_start=kts
+   k_end  = min(kte, kde-1)
+
+   DO  k = k_start, k_end 
+   DO ij = 1 , num_tiles
+           
+        DO j=j_start(ij),j_end(ij)
+        DO i=i_start(ij),i_end(ij)
+              IF (itimestep.NE.1) THEN
+                  u_old(i,k,j)     =  u_new(i,k,j)   !for checking (u budget and v budget; on u grid)
+                  v_old(i,k,j)     =  v_new(i,k,j) 
+                  w_old(i,k,j)     =  w_new(i,k,j) 
+                  th_old(i,k,j)    =  th_new(i,k,j) 
+                  if ( k.eq.k_start ) then
+                  muus_old(i,j)    =  muus(i,j) 
+                  muvs_old(i,j)    =  muvs(i,j) 
+                  muts_old(i,j)    =  muts(i,j) 
+                  endif
+              ENDIF
+
+              th_new(i,k,j)     =  th(i,k,j) !the right hand side is the input of th 
+              u_new(i,k,j)      =  u(i,k,j)
+              v_new(i,k,j)      =  v(i,k,j)
+              w_new(i,k,j)      =  w(i,k,j)
+        ENDDO      
+        ENDDO
+   ENDDO
+   ENDDO
+
+   DO ij = 1 , num_tiles
+
+        DO j=j_start(ij),j_end(ij)
+        DO i=i_start(ij),i_end(ij)
+
+           DO k = k_start, k_end
+ 
+              IF (itimestep .EQ. 1 ) THEN
+                      u_tend(i,k,j)      =  0.
+                      v_tend(i,k,j)      =  0.
+                      w_tend(i,k,j)      =  0.
+                      th_tend(i,k,j)     =  0.
+              ELSE
+                      u_tend(i,k,j)      =  (u_new(i,k,j)*muus(i,j)-u_old(i,k,j)*muus_old(i,j))/dt/muus(i,j)
+                      v_tend(i,k,j)      =  (v_new(i,k,j)*muvs(i,j)-v_old(i,k,j)*muvs_old(i,j))/dt/muvs(i,j)
+                      w_tend(i,k,j)      =  (w_new(i,k,j)*muts(i,j)-w_old(i,k,j)*muts_old(i,j))/dt/muts(i,j)
+                      th_tend(i,k,j)     =  (th_new(i,k,j)*muts(i,j)-th_old(i,k,j)*muts_old(i,j))/dt/muts(i,j)
+              ENDIF
+
+              !IF (i.eq.2 .and. j.eq.60 .and. k.eq.10 )  THEN
+              !write(*,*) 'after all rk:    w=',w_new(i,k,j),' w_old=',w_old(i,k,j)
+              !write(*,*) 'after all rk:    u=',u_new(i,k,j),' u_old=',u_old(i,k,j)
+              !write(*,*) 'after all rk:   th=',th_new(i,k,j),'th_old=',th_old(i,k,j)
+              !ENDIF
+
+           ENDDO
+
+        ENDDO
+        ENDDO
+   ENDDO
+
+
+   END SUBROUTINE diagnose_tend_dt
+
+   !-------------------------------------------------------------------------------
+
    SUBROUTINE diagnostic_output_calc(                                 &
                       ids,ide, jds,jde, kds,kde,                      &
                       ims,ime, jms,jme, kms,kme,                      &
@@ -1193,7 +1328,6 @@ CONTAINS
    !$OMP END PARALLEL DO
 
    END SUBROUTINE diagnostic_output_calc
-
 
 !+---+-----------------------------------------------------------------+ 
       REAL FUNCTION GAMMLN(XX)

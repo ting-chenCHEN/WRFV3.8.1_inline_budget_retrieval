@@ -18,6 +18,7 @@ CONTAINS
                                    moist, chem, tracer, scalar,         &
                                    th_phy, pi_phy, p_phy, rho_phy,      & 
                                    p8w, t8w, dz8w,                      &
+                                   muus, muvs, muts,                    & !Added by TC Chen 2018
                                    curr_secs2,                          &
                                    diag_flag,                           &
                                    ids,  ide,  jds,  jde,  kds,  kde,   &
@@ -69,7 +70,8 @@ CONTAINS
       !=============================================================
       
       USE module_lightning_driver, ONLY : lightning_driver      
-      USE module_diag_misc, ONLY : diagnostic_output_calc
+      USE module_diag_misc, ONLY : diagnostic_output_calc, &
+                                   diagnose_tend_dt !added by TC Chen 2018
       USE module_diag_cl, ONLY : clwrf_output_calc
       USE module_diag_pld, ONLY : pld
       USE module_diag_zld, ONLY : zld
@@ -110,6 +112,11 @@ CONTAINS
                                                                            dz8w    , &
                                                                            p8w     , &
                                                                            t8w
+      ! Added by TC Chen 2018 ------
+        REAL , DIMENSION(ims:ime,jms:jme)            , INTENT(IN) ::       muus    , &
+                                                                           muvs    , &
+                                                                           muts
+      ! ------
 
       !  Time (s) since the beginning of the restart.
 
@@ -958,6 +965,38 @@ CONTAINS
             END DO
             !$OMP END PARALLEL DO
       ENDIF AFWA_DIAGS
+
+! the subroutine below is added in /phys/module_diag_misc.F (TC Chen 2018)
+
+      CALL diagnose_tend_dt (  TH_TEND =grid%t_tend                 &
+                              ,TH_NEW  =grid%t_n, TH_OLD =grid%t_o &
+                              ,U_TEND=grid%u_tend                    &
+                              ,U_NEW =grid%u_n, U_OLD =grid%u_o      &
+                              ,V_TEND=grid%v_tend                    &
+                              ,V_NEW =grid%v_n, V_OLD =grid%v_o      &
+                              ,W_TEND=grid%w_tend                    &
+                              ,W_NEW =grid%w_n, W_OLD =grid%w_o      &
+                              ,TH=th_phy,ALT=grid%alt, AL=grid%al    &
+                              ,U=grid%u_2,V=grid%v_2,W=grid%w_2      &
+                              ,MUUS=muus, MUUS_OLD=grid%muus_old     &
+                              ,MUVS=muvs, MUVS_OLD=grid%muvs_old     &
+                              ,MUTS=muts, MUTS_OLD=grid%muts_old     &
+                              ,DT=grid%dt,DX=grid%dx,DY=grid%dy      &
+                               ! Dimension arguments
+                              ,IDS=ids,IDE=ide, JDS=jds,JDE=jde      &
+                              ,KDS=kds,KDE=kde                       &
+                              ,IMS=ims,IME=ime, JMS=jms,JME=jme      &
+                              ,KMS=kms,KME=kme                       &
+                              ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe      &
+                              ,KPS=kps,KPE=kpe                       &
+                              ,I_START=grid%i_start                  &
+                              ,I_END=min(grid%i_end, ide-1)          &
+                              ,J_START=grid%j_start                  &
+                              ,J_END=min(grid%j_end,jde-1)           &
+                              ,KTS=k_start, KTE=min(k_end,kde-1)     &
+                              ,NUM_TILES=grid%num_tiles              &
+                              ,ITIMESTEP=grid%itimestep              &
+                                                                     )
 
 
 

@@ -783,6 +783,11 @@ BENCH_END(set_phys_bc_tim)
                              , imsy, imey, jmsy, jmey, kmsy, kmey    &
                              , ipsy, ipey, jpsy, jpey, kpsy, kpey    &
                              , k_start , k_end                  &
+                             ! Added by TC Chen 
+                             , grid%diff2_t_tendf               & 
+                             , grid%diff2_ru_tendf              & 
+                             , grid%diff2_rv_tendf              & 
+                             , grid%diff2_rw_tendf              & 
                             )
 
      END IF rk_step_is_one
@@ -863,7 +868,32 @@ BENCH_START(rk_tend_tim)
                          ,grid%i_start(ij), grid%i_end(ij)                                                     &
                          ,grid%j_start(ij), grid%j_end(ij)                                                     &
                          ,k_start, k_end                                                                       &
-                         ,max_vert_cfl_tmp(ij), max_horiz_cfl_tmp(ij)                                         )
+                         ,max_vert_cfl_tmp(ij), max_horiz_cfl_tmp(ij)                                          &
+                         ! Added by TC Chen 2018
+                         !below: extraced values for different processes                                                   
+                         ,grid%adv_t_tend, grid%adv_ru_tend, grid%adv_rv_tend, grid%adv_rw_tend                & 
+                         ,grid%pgf_ru_tend, grid%pgf_rv_tend, grid%pgbuoy_rw_tend                              &
+                         ,grid%damping_rw_tend                                                                 &
+                         ,grid%cor_ru_tend, grid%cor_rv_tend, grid%cor_rw_tend                                 &
+                         ,grid%cuv_ru_tend, grid%cuv_rv_tend, grid%cuv_rw_tend                                 &
+                         ,grid%damp2_ru_tendf, grid%damp2_rv_tendf, grid%damp2_rw_tendf                        &
+                         ,grid%damp2_t_tendf                                                                   &         
+                         !below: defined to zeros (in preparation)                                            
+                         ,grid%ac_adv_t_tend_l, grid%ac_adv_t_tend_s                                           &
+                         ,grid%ac_adv_u_tend,   grid%ac_adv_v_tend                                             &
+                         ,grid%ac_adv_w_tend                                                                   &
+                         ,grid%ac_pgf_u_tend_l, grid%ac_pgf_u_tend_s                                           &
+                         ,grid%ac_pgf_v_tend_l, grid%ac_pgf_v_tend_s                                           &
+                         ,grid%ac_pgbuoy_w_tend_l, grid%ac_pgbuoy_w_tend_s                                     &
+                         ,grid%ac_damping_w_tend                                                               &
+                         ,grid%ac_cor_u_tend, grid%ac_cor_v_tend, grid%ac_cor_w_tend                           &
+                         ,grid%ac_cuv_u_tend, grid%ac_cuv_v_tend, grid%ac_cuv_w_tend                           &
+                         ,grid%ac_damp2_u_tend, grid%ac_damp2_v_tend                                           &
+                         ,grid%ac_damp2_w_tend, grid%ac_damp2_t_tend                                           &
+                         ,grid%ac_damp3_w_tend, grid%ac_diff2_t_tend                                           &
+                         ,grid%ac_diff2_u_tend, grid%ac_diff2_v_tend, grid%ac_diff2_w_tend                     &
+                                                                                                               )
+
      END DO
      !$OMP END PARALLEL DO
 BENCH_END(rk_tend_tim)
@@ -1303,7 +1333,25 @@ BENCH_START(advance_uv_tim)
                            ims, ime, jms, jme, kms, kme,                          &
                            grid%i_start(ij), grid%i_end(ij),                      &
                            grid%j_start(ij), grid%j_end(ij),                      &
-                           k_start    , k_end                                     )
+                           k_start    , k_end,                                    &
+                           ! Added by TC Chen 2018  ---------------------------
+                           ! input
+                           rk_step, rk_order,                           &
+                           grid%adv_ru_tend, grid%adv_rv_tend,          &
+                           grid%pgf_ru_tend, grid%pgf_rv_tend,          &
+                           grid%cor_ru_tend, grid%cor_rv_tend,          &
+                           grid%cuv_ru_tend, grid%cuv_rv_tend,          &
+                           grid%damp2_ru_tendf, grid%damp2_rv_tendf,    &
+                           grid%diff2_ru_tendf, grid%diff2_rv_tendf,    &
+                           ! added (accumulated) values
+                           grid%ac_adv_u_tend, grid%ac_adv_v_tend,      &
+                           grid%ac_pgf_u_tend_l, grid%ac_pgf_v_tend_l,  &
+                           grid%ac_pgf_u_tend_s, grid%ac_pgf_v_tend_s,  &
+                           grid%ac_cor_u_tend, grid%ac_cor_v_tend,      &
+                           grid%ac_cuv_u_tend, grid%ac_cuv_v_tend,      &
+                           grid%ac_damp2_u_tend, grid%ac_damp2_v_tend,  &
+                           grid%ac_diff2_u_tend, grid%ac_diff2_v_tend   &
+                                                                                   )
 BENCH_END(advance_uv_tim)
 
        END DO
@@ -1413,7 +1461,16 @@ BENCH_START(advance_mu_t_tim)
                           ims, ime, jms, jme, kms, kme,      &
                           grid%i_start(ij), grid%i_end(ij),  &
                           grid%j_start(ij), grid%j_end(ij),  &
-                          k_start    , k_end                )
+                          k_start    , k_end,                & 
+                          ! Added by TC Chen 2018 ---------- 
+                          ! input
+                          rk_step, rk_order,                           &
+                          grid%adv_t_tend, grid%damp2_t_tendf,         &
+                          grid%diff2_t_tendf,                          &
+                          ! added (accumulated) values
+                          grid%ac_adv_t_tend_l, grid%ac_adv_t_tend_s,  &
+                          grid%ac_damp2_t_tend, grid%ac_diff2_t_tend   )
+
 BENCH_END(advance_mu_t_tim)
        ENDDO
        !$OMP END PARALLEL DO
@@ -1519,7 +1576,21 @@ BENCH_START(advance_w_tim)
                            ims,ime, jms,jme, kms,kme,                  &
                            grid%i_start(ij), grid%i_end(ij),           &
                            grid%j_start(ij), grid%j_end(ij),           &
-                           k_start    , k_end                          )
+                           k_start    , k_end,                         &
+                           ! ---Added by TC Chen 2018 -----------------
+                           ! input
+                           rk_step, rk_order,                           &
+                           grid%adv_rw_tend, grid%pgbuoy_rw_tend,       &
+                           grid%damping_rw_tend, grid%cor_rw_tend,      &
+                           grid%cuv_rw_tend, grid%damp2_rw_tendf,       &
+                           grid%diff2_rw_tendf,                         &
+                           ! accumulated values
+                           grid%ac_adv_w_tend,grid%ac_pgbuoy_w_tend_l,  &
+                           grid%ac_pgbuoy_w_tend_s,                     &
+                           grid%ac_damping_w_tend,                      &
+                           grid%ac_cor_w_tend, grid%ac_cuv_w_tend,      &
+                           grid%ac_damp2_w_tend, grid%ac_damp3_w_tend,  &
+                           grid%ac_diff2_w_tend                         ) 
          ENDIF
 BENCH_END(advance_w_tim)
 
@@ -1751,7 +1822,41 @@ BENCH_START(small_step_finish_tim)
                                ims, ime, jms, jme, kms, kme,     &
                                grid%i_start(ij), grid%i_end(ij), &
                                grid%j_start(ij), grid%j_end(ij), &
-                               k_start    , k_end               )
+                               k_start    , k_end ,              &
+                               ! Added by TC Chen 2018 ----------
+                               grid%dt,                          &
+                               !accumulated input
+                               grid%ac_adv_u_tend, grid%ac_pgf_u_tend_l,  &
+                               grid%ac_pgf_u_tend_s, grid%ac_cor_u_tend,  &
+                               grid%ac_cuv_u_tend, grid%ac_damp2_u_tend,  &
+                               grid%ac_diff2_u_tend,                      &
+                               grid%ac_adv_v_tend, grid%ac_pgf_v_tend_l,  &
+                               grid%ac_pgf_v_tend_s, grid%ac_cor_v_tend,  &
+                               grid%ac_cuv_v_tend, grid%ac_damp2_v_tend,  &
+                               grid%ac_diff2_v_tend,                      &
+                               grid%ac_adv_w_tend,                        &
+                               grid%ac_pgbuoy_w_tend_l,                   &
+                               grid%ac_pgbuoy_w_tend_s,                   &
+                               grid%ac_damping_w_tend, grid%ac_cor_w_tend,&
+                               grid%ac_cuv_w_tend, grid%ac_damp2_w_tend,  &
+                               grid%ac_damp3_w_tend, grid%ac_diff2_w_tend,&
+                               grid%ac_adv_t_tend_l, grid%ac_adv_t_tend_s,&
+                               grid%ac_damp2_t_tend, grid%ac_diff2_t_tend,&
+                               !converted values
+                               grid%u_tend_adv, grid%u_tend_pgf,          &
+                               grid%u_tend_cor, grid%u_tend_cuv,          &
+                               grid%u_tend_damp2, grid%u_tend_diff2,      &
+                               grid%v_tend_adv, grid%v_tend_pgf,          &
+                               grid%v_tend_cor, grid%v_tend_cuv,          &
+                               grid%v_tend_damp2, grid%v_tend_diff2,      &
+                               grid%w_tend_adv, grid%w_tend_pgbuoy,       &
+                               grid%w_tend_damping,                       &
+                               grid%w_tend_cor, grid%w_tend_cuv,          &
+                               grid%w_tend_damp2, grid%w_tend_damp3,      &
+                               grid%w_tend_diff2,                         &
+                               grid%t_tend_adv,grid%t_tend_diff2,         &
+                               grid%t_tend_damp2                          &
+                                                                          )
 !  call  to set ru_m, rv_m and ww_m b.c's for PD advection
 
        IF (rk_step == rk_order) THEN
@@ -4502,6 +4607,7 @@ BENCH_END(bc_2d_tim)
                             moist, chem, tracer, scalar,         &
                             th_phy, pi_phy, p_phy, rho_phy,      &   
                             p8w, t8w, dz8w,                      &
+                            muus, muvs, grid%muts,               &
                             curr_secs2,                          &
                             diag_flag,                           &
                             ids,  ide,  jds,  jde,  kds,  kde,   &
