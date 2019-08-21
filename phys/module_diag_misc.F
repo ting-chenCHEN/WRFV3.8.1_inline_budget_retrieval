@@ -12,9 +12,10 @@ MODULE module_diag_misc
       PRIVATE :: WGAMMA
       PRIVATE :: GAMMLN
 CONTAINS
-   !----Added by TC Chen 2018 July ------------------------------------------------
-   ! Note that the diagnose below does NOT include map projection modifciation, which 
-   ! should be fine for IDEALIZED SIMULATION, but not for real case. 
+   !=== (c) SUBROUTINE added by TC Chen 2018 July ===
+   ! calculating the tendency term over the integration time step 
+   ! Note that the diagnose below does NOT include map projection modifciation 
+   !=================================================
    SUBROUTINE diagnose_tend_dt (                                &
                       th_tend,      th_new,    th_old,          &
                       u_tend,        u_new,     u_old,          &
@@ -22,8 +23,9 @@ CONTAINS
                       w_tend,        w_new,     w_old,          &
                       !input
                       th, alt, al, u, v, w,                     &
-                      muus, muus_old, muvs, muvs_old,           &
-                      muts, muts_old,                           &                      
+                      muus, muus_old, muus_new,                 &
+                      muvs, muvs_old, muvs_new,                 &
+                      muts, muts_old, muts_new,                 &                      
                       dt, dx, dy,                               &
                       ids,ide, jds,jde, kds,kde,                &
                       ims,ime, jms,jme, kms,kme,                &
@@ -69,11 +71,14 @@ CONTAINS
    REAL, DIMENSION( ims:ime , jms:jme ),                         &
           INTENT(IN) ::                           muus,          &
                                                   muvs,          &
-                                                  muts
+                                                  muts 
    REAL, DIMENSION( ims:ime , jms:jme ),                         &
           INTENT(INOUT)::                         muus_old,      &
                                                   muvs_old,      &
-                                                  muts_old
+                                                  muts_old,      &
+                                                  muus_new,      &
+                                                  muvs_new,      &
+                                                  muts_new          
                                                       
    INTEGER,  INTENT(IN   ) :: itimestep
    REAL,  INTENT(IN   ) :: DT,DX,DY
@@ -96,9 +101,9 @@ CONTAINS
                   w_old(i,k,j)     =  w_new(i,k,j) 
                   th_old(i,k,j)    =  th_new(i,k,j) 
                   if ( k.eq.k_start ) then
-                  muus_old(i,j)    =  muus(i,j) 
-                  muvs_old(i,j)    =  muvs(i,j) 
-                  muts_old(i,j)    =  muts(i,j) 
+                  muus_old(i,j)    =  muus_new(i,j) 
+                  muvs_old(i,j)    =  muvs_new(i,j) 
+                  muts_old(i,j)    =  muts_new(i,j) 
                   endif
               ENDIF
 
@@ -106,10 +111,18 @@ CONTAINS
               u_new(i,k,j)      =  u(i,k,j)
               v_new(i,k,j)      =  v(i,k,j)
               w_new(i,k,j)      =  w(i,k,j)
+
+              if ( k.eq.k_start ) then
+              muus_new(i,j)    =  muus(i,j) 
+              muvs_new(i,j)    =  muvs(i,j) 
+              muts_new(i,j)    =  muts(i,j) 
+              endif
+
         ENDDO      
         ENDDO
    ENDDO
    ENDDO
+
 
    DO ij = 1 , num_tiles
 
@@ -124,12 +137,15 @@ CONTAINS
                       w_tend(i,k,j)      =  0.
                       th_tend(i,k,j)     =  0.
               ELSE
-                      u_tend(i,k,j)      =  (u_new(i,k,j)*muus(i,j)-u_old(i,k,j)*muus_old(i,j))/dt/muus(i,j)
-                      v_tend(i,k,j)      =  (v_new(i,k,j)*muvs(i,j)-v_old(i,k,j)*muvs_old(i,j))/dt/muvs(i,j)
-                      w_tend(i,k,j)      =  (w_new(i,k,j)*muts(i,j)-w_old(i,k,j)*muts_old(i,j))/dt/muts(i,j)
-                      th_tend(i,k,j)     =  (th_new(i,k,j)*muts(i,j)-th_old(i,k,j)*muts_old(i,j))/dt/muts(i,j)
+                      u_tend(i,k,j)      =  (u_new(i,k,j)*muus_new(i,j)-u_old(i,k,j)*muus_old(i,j))/dt/muus_new(i,j)
+                      v_tend(i,k,j)      =  (v_new(i,k,j)*muvs_new(i,j)-v_old(i,k,j)*muvs_old(i,j))/dt/muvs_new(i,j)
+                      w_tend(i,k,j)      =  (w_new(i,k,j)*muts_new(i,j)-w_old(i,k,j)*muts_old(i,j))/dt/muts_new(i,j)
+                      th_tend(i,k,j)     =  (th_new(i,k,j)*muts_new(i,j)-th_old(i,k,j)*muts_old(i,j))/dt/muts_new(i,j)
               ENDIF
-
+              IF (i.eq.1 .and. j.eq.111 .and. k.eq.75 )  THEN
+              write(*,*) 'after all rk:  th_new=',th_new(i,k,j),'th_old=',th_old(i,k,j),'uncoupled th_tend=',(th_new(i,k,j)-th_old(i,k,j))/dt
+              write(*,*) 'after all rk:  muts=  ',muts(i,j),'muts_old=',muts_old(i,j),'th_tend=',th_tend(i,k,j)
+              ENDIF
               !IF (i.eq.2 .and. j.eq.60 .and. k.eq.10 )  THEN
               !write(*,*) 'after all rk:    w=',w_new(i,k,j),' w_old=',w_old(i,k,j)
               !write(*,*) 'after all rk:    u=',u_new(i,k,j),' u_old=',u_old(i,k,j)

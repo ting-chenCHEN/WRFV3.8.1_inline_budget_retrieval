@@ -100,7 +100,7 @@ CONTAINS
       ! Added by TC Chen 2018 ------
       REAL , DIMENSION(ims:ime,jms:jme)            , INTENT(IN) ::         muus    , &
                                                                            muvs    , &
-                                                                           muts
+                                                                           muts    
       ! ------
 
       !  Time (s) since the beginning of the restart.

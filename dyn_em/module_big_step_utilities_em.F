@@ -1,6 +1,11 @@
 !wrf:MODEL_LAYER:DYNAMICS
 !
 
+!=== (c) modification by TC Chen 2018-2019 ===
+! adding a SUBROUTINE zero_tend_all : 
+! to initialize all the added budget tendencies to all zeros
+!=============================================
+
 #if (RWORDSIZE == 4)
 #   define VPOWX vspowx
 #   define VPOW  vspow
@@ -4490,7 +4495,6 @@ SUBROUTINE decouple ( rr, rfield, field, name, config_flags, &
 END SUBROUTINE decouple
 
 !-------------------------------------------------------------------------------
-
 SUBROUTINE zero_tend ( tendency,                     &
                        ids, ide, jds, jde, kds, kde, &
                        ims, ime, jms, jme, kms, kme, &
@@ -4528,6 +4532,7 @@ SUBROUTINE zero_tend ( tendency,                     &
       END SUBROUTINE zero_tend
 
 !-------------------------------------------------------------------------------
+! added by TC Chen 2018-2019
 
 SUBROUTINE zero_tend_all ( tendency1, tendency2,      &
                            tendency3, tendency4,      &
@@ -4542,7 +4547,12 @@ SUBROUTINE zero_tend_all ( tendency1, tendency2,      &
                            tendency21,tendency22,     &
                            tendency23,tendency24,     &
                            tendency25,tendency26,     &
-                           tendency27,                &
+                           tendency27,tendency28,     &
+                           tendency29,tendency30,     &
+                           tendency31,tendency32,     &
+                           tendency33,tendency34,     &
+                           tendency35,tendency36,     &
+                           tendency37,                &
                        ids, ide, jds, jde, kds, kde, &
                        ims, ime, jms, jme, kms, kme, &
                        its, ite, jts, jte, kts, kte )
@@ -4569,7 +4579,12 @@ SUBROUTINE zero_tend_all ( tendency1, tendency2,      &
                                                                       tendency21,tendency22, &
                                                                       tendency23,tendency24, &
                                                                       tendency25,tendency26, &
-                                                                      tendency27
+                                                                      tendency27,tendency28, &
+                                                                      tendency29,tendency30, &
+                                                                      tendency31,tendency32, &
+                                                                      tendency33,tendency34, &
+                                                                      tendency35,tendency36, &
+                                                                      tendency37
 
    ! Local data
    
@@ -4611,6 +4626,16 @@ SUBROUTINE zero_tend_all ( tendency1, tendency2,      &
         tendency25(i,k,j) = 0.
         tendency26(i,k,j) = 0.
         tendency27(i,k,j) = 0.
+        tendency28(i,k,j) = 0.
+        tendency29(i,k,j) = 0.
+        tendency30(i,k,j) = 0.
+        tendency31(i,k,j) = 0.
+        tendency32(i,k,j) = 0.
+        tendency33(i,k,j) = 0.
+        tendency34(i,k,j) = 0.
+        tendency35(i,k,j) = 0.
+        tendency36(i,k,j) = 0.
+        tendency37(i,k,j) = 0.
       ENDDO
       ENDDO
       ENDDO
@@ -5428,9 +5453,22 @@ END SUBROUTINE phy_prep
      DO i = i_start, i_end
 
 #ifdef REVERT
+       !if (i.eq.1 .and. j.eq.111 .and. k.eq.75) then
+       !print*,'ifdef REVERT, t_2=',t_new(i,k,j)
+       !endif
        t_new(i,k,j) = t_new(i,k,j)-h_diabatic(i,k,j)*dt
+       !if (i.eq.1 .and. j.eq.111 .and. k.eq.75) then
+       !print*,'ifdef REVERT, t_2=t_2-h_diabatic(i,k,j)*dt=',t_new(i,k,j)
+       !endif
 #endif
+       if (i.eq.1 .and. j.eq.111 .and. k.eq.75) then
+       print*,'SUBROUTINE moist_physics_prep_em in big_utilities..., t_2=',t_new(i,k,j)
+       print*,'SUBROUTINE moist_physics_prep_em in big_utilities..., t0=',t0
+       endif
        th_phy(i,k,j) = t_new(i,k,j) + t0
+       if (i.eq.1 .and. j.eq.111 .and. k.eq.75) then
+       print*,'SUBROUTINE moist_physics_prep_em in big_utilities..., t_2+t0 =',th_phy(i,k,j)
+       endif
        h_diabatic(i,k,j) = th_phy(i,k,j)
        qv_diabatic(i,k,j) = qv(i,k,j)
        qc_diabatic(i,k,j) = qc(i,k,j)
@@ -5604,6 +5642,9 @@ END SUBROUTINE phy_prep
        endif
 
        IF ( PRESENT(dfi_stage) .and. PRESENT(dfi_tten_rad) ) THEN
+            ! if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+            ! print*,'check moist_physics_finish_em!'
+            ! endif
           IF ( dfi_stage == DFI_FWD .and. dfi_tten_rad(i,k,j) >= -0.1 .and. &
                dfi_tten_rad(i,k,j) <= 0.1 .and. k < k_end ) THEN
 ! add radar temp tendency
@@ -5615,9 +5656,18 @@ END SUBROUTINE phy_prep
           ENDIF
        ENDIF
 #else
+             if (i.eq.1 .and. j.eq.111 .and. k.eq.75) then
+             print*,'SUBROUTINE moist_physics_finish_em, after microphysics: th_phy=', th_phy(i,k,j)
+             print*,'                              (if H=0, this should be the same as previoust step)'
+             print*,'SUBROUTINE moist_physics_finish_em, the value before microphysics: t_new=', t_new(i,k,j)
+             endif
          t_new(i,k,j) = t_new(i,k,j) + mpten
 #endif
          h_diabatic(i,k,j) =  mpten/dt
+             if (i.eq.1 .and. j.eq.111 .and. k.eq.75) then
+             print*,'SUBROUTINE moist_physics_finish_em, the update t_new (with diabatic)=', t_new(i,k,j),'(should be the same as th_phy)'
+             print*,'diabatic=',h_diabatic(i,k,j)
+             endif
 !!!         ! KLUDGE:
 !!!         qvten = 0.0
 !!!         qcten = 0.0

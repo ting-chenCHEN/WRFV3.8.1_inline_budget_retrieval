@@ -1,5 +1,16 @@
 !WRF:MODEL_LAYER:DYNAMICS
 !
+!=== (c) modification by TC Chen 2018-2019 ===
+!
+!in SUBROUTINE rk_tendency:
+!
+!(1)retrieving different instantaneous budget (large-step) values whenever the 
+!   corrsponding subroutine is called. 
+!(2)initializing all the accumulated budget terms (over one integration step)
+!   into zeros when RK3 step=1
+!
+!=============================================
+ 
 
 MODULE module_em
 
@@ -13,7 +24,7 @@ MODULE module_em
    	horizontal_pressure_gradient, pg_buoy_w, w_damp, perturbation_coriolis, coriolis, curvature, horizontal_diffusion, &
         horizontal_diffusion_3dmp, vertical_diffusion_u, &
 	vertical_diffusion_v, vertical_diffusion, vertical_diffusion_3dmp, sixth_order_diffusion, rk_rayleigh_damp, &
-        theta_relaxation, vertical_diffusion_mp, zero_tend, zero_tend2d, zero_tend_all !"zero_tend_all" Added by TC Chen
+        theta_relaxation, vertical_diffusion_mp, zero_tend, zero_tend2d, zero_tend_all !"zero_tend_all" Added by TC Chen 2019
 	
    USE module_state_description, only: param_first_scalar, p_qr, p_qv, p_qc, p_qg, p_qi, p_qs, tiedtkescheme,ntiedtkescheme, heldsuarez, &
         positivedef, gdscheme, g3scheme, gfscheme, kfetascheme, mskfscheme, monotonic, wenopd_scalar, weno_scalar, weno_mom
@@ -211,7 +222,8 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                          its, ite, jts, jte, kts, kte,                    &
                          max_vert_cfl, max_horiz_cfl,                     &
                          !Added by TC Chen  2018-----------
-                         !below: extraced values for different processes                       
+                         !below: extraced instantaneous values for different 
+                         !       processes when the subroutine is called                      
                          adv_t_tend,adv_ru_tend, adv_rv_tend,adv_rw_tend, &
                          pgf_ru_tend, pgf_rv_tend, pgbuoy_rw_tend,        &
                          damping_rw_tend,                                 &
@@ -219,7 +231,11 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                          cuv_ru_tend, cuv_rv_tend, cuv_rw_tend,           &
                          damp2_ru_tendf, damp2_rv_tendf, damp2_rw_tendf,  &
                          damp2_t_tendf,                                   & 
-                         !below: defined to zeros (in preparation)
+                         !below: defined to zeros (in preparation for budget
+                         !       analysis; "l" and "s" indicate large-step  
+                         !       and small/acoustic-step components, repectively
+                         !       ; if without "l" or "s"->large-step forcing
+                         !       only. no need to separate)
                          ac_adv_t_tend_l, ac_adv_t_tend_s,                &
                          ac_adv_u_tend,   ac_adv_v_tend,                  &
                          ac_adv_w_tend,                                   &
@@ -234,7 +250,11 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                          ac_damp3_w_tend,                                 &
                          ac_diff2_t_tend,                                 &
                          ac_diff2_u_tend, ac_diff2_v_tend,                &
-                         ac_diff2_w_tend                                  &
+                         ac_diff2_w_tend,                                 &
+                         ac_P_ra_t_tend,                                  &
+                         ac_P_bl_t_tend, ac_P_bl_u_tend, ac_P_bl_v_tend,  &
+                         ac_P_cu_t_tend, ac_P_cu_u_tend, ac_P_cu_v_tend,  &
+                         ac_P_shcu_t_tend, ac_P_shcu_u_tend, ac_P_shcu_v_tend &
                                                                           )
 
    IMPLICIT NONE
@@ -354,8 +374,9 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
    INTEGER :: time_step
 
    ! Added by TC Chen 2018 ----------------
-   !below are the separated forcing for different processes (re-calculated
-   !whenever this subroutine rk_tendency is called)
+   !below are the separated forcing for different processes 
+   !(the instantaneous value whenever this subroutine rk_tendency is called)
+
    REAL , DIMENSION( ims:ime , kms:kme, jms:jme  ), INTENT(OUT  ) ::               &
                                                                        adv_t_tend, & !advection
                                                                       adv_ru_tend, &
@@ -411,7 +432,17 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                                                   ac_diff2_t_tend, &
                                                                   ac_diff2_u_tend, &
                                                                   ac_diff2_v_tend, &
-                                                                  ac_diff2_w_tend 
+                                                                  ac_diff2_w_tend, & 
+                                                                   ac_P_ra_t_tend, & 
+                                                                   ac_P_bl_t_tend, & 
+                                                                   ac_P_bl_u_tend, & 
+                                                                   ac_P_bl_v_tend, & 
+                                                                   ac_P_cu_t_tend, & 
+                                                                   ac_P_cu_u_tend, & 
+                                                                   ac_P_cu_v_tend, & 
+                                                                 ac_P_shcu_t_tend, & 
+                                                                 ac_P_shcu_u_tend, & 
+                                                                 ac_P_shcu_v_tend 
 
    !local
    INTEGER :: n
@@ -497,6 +528,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                     ims, ime, jms, jme, kms, kme, &
                     its, ite, jts, jte, kts, kte )
    ! Added by TC Chen 2018 --------------------------------
+   ! Initialize all the budget tendencies to zeros 
      IF (rk_step == 1) THEN 
             CALL zero_tend_all( ac_adv_t_tend_l,  &
                                 ac_adv_t_tend_s,  &
@@ -524,7 +556,17 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                 ac_diff2_t_tend,  &
                                 ac_diff2_u_tend,  &
                                 ac_diff2_v_tend,  &
-                                ac_diff2_w_tend,  &
+                                ac_diff2_w_tend,  & ! number 27
+                                 ac_P_ra_t_tend,  & 
+                                 ac_P_bl_t_tend,  & 
+                                 ac_P_bl_u_tend,  & 
+                                 ac_P_bl_v_tend,  & 
+                                 ac_P_cu_t_tend,  & 
+                                 ac_P_cu_u_tend,  & 
+                                 ac_P_cu_v_tend,  & 
+                               ac_P_shcu_t_tend,  & 
+                               ac_P_shcu_u_tend,  & 
+                               ac_P_shcu_v_tend,  & 
                     ids, ide, jds, jde, kds, kde, &
                     ims, ime, jms, jme, kms, kme, &
                     its, ite, jts, jte, kts, kte  )
@@ -552,6 +594,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
      ENDDO
      ENDDO
      ENDDO
+     ! ----------------------------
 
     IF( (rk_step == 3) .and. ( adv_opt == WENO_MOM ) ) THEN
 
@@ -682,6 +725,12 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
      DO k = kts, kte
      DO i = its, ite
         t_tend_old(i,k,j)=t_tend(i,k,j)
+              !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+              !print*,'=========================='
+              !print*,'before adv.....(in moduel_em.F)'
+              !print*,'t_tend_old=', t_tend(i,k,j)
+              !endif
+                   
      ENDDO
      ENDDO
      ENDDO
@@ -694,15 +743,6 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                           ids, ide, jds, jde, kds, kde, &
                           ims, ime, jms, jme, kms, kme, &
                           its, ite, jts, jte, kts, kte ) 
-     ! Added by TC Chen 2018 ------
-     DO j = jts, jte
-     DO k = kts, kte
-     DO i = its, ite
-        adv_t_tend(i,k,j)=t_tend(i,k,j)-t_tend_old(i,k,j)
-     ENDDO
-     ENDDO
-     ENDDO
-     ! -----------------------------
 
      IF ( config_flags%cu_physics == GDSCHEME  .OR.     &
           config_flags%cu_physics == GFSCHEME  .OR.     &
@@ -717,6 +757,21 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                         its, ite, jts, jte, kts, kte     )
 
      END IF
+
+     ! Added by TC Chen 2018 ------
+     DO j = jts, jte
+     DO k = kts, kte
+     DO i = its, ite
+        adv_t_tend(i,k,j)=t_tend(i,k,j)-t_tend_old(i,k,j)
+              !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+              !print*,'after adv.....(in moduel_em.F)'
+              !print*,'t_tend=', t_tend(i,k,j), 'adv_t_tend=',adv_t_tend(i,k,j)
+              !print*,'=========================='
+              !endif
+     ENDDO
+     ENDDO
+     ENDDO
+     ! -----------------------------
 
      CALL rhs_ph( ph_tend, u, v, ww, ph, ph, phb, w, &
                   mut, muu, muv,                     &
@@ -758,9 +813,9 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
      DO i = its, ite
         pgf_ru_tend(i,k,j)=ru_tend(i,k,j)-ru_tend_old(i,k,j)
         pgf_rv_tend(i,k,j)=rv_tend(i,k,j)-rv_tend_old(i,k,j)
-        IF (i.eq.2 .and. k.eq.10 .and. j.eq.100) THEN 
-           print*,'moduel_em.F: pgf_rv_tend(i,k,j)=',pgf_rv_tend(i,k,j)
-        ENDIF
+      !  IF (i.eq.2 .and. k.eq.10 .and. j.eq.100) THEN 
+      !     print*,'moduel_em.F: pgf_rv_tend(i,k,j)=',pgf_rv_tend(i,k,j)
+      !  ENDIF
      ENDDO
      ENDDO
      ENDDO
@@ -1034,6 +1089,11 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
         rv_tendf_old(i,k,j)=rv_tendf(i,k,j)
         rw_tendf_old(i,k,j)=rw_tendf(i,k,j)
         t_tendf_old(i,k,j) =t_tendf(i,k,j)
+              !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+              !print*,'=========================='
+              !print*,'before damp2.....(in moduel_em.F)'
+              !print*,'t_tendf_old=', t_tendf(i,k,j)
+              !endif
      ENDDO
      ENDDO
      ENDDO
@@ -1056,18 +1116,26 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
         damp2_rv_tendf(i,k,j)=rv_tendf(i,k,j)-rv_tendf_old(i,k,j)
         damp2_rw_tendf(i,k,j)=rw_tendf(i,k,j)-rw_tendf_old(i,k,j)
         damp2_t_tendf(i,k,j) =t_tendf(i,k,j)-t_tendf_old(i,k,j)
+              !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+              !print*,'after damp2.....(in moduel_em.F)'
+              !print*,'damp2_t_tendf=',damp2_t_tendf(i,k,j)
+              !print*,'ps. t_tend=', t_tend(i,k,j),'(just for checking...should be the same as the one after adv..)'
+              !print*,'=========================='
+              !endif
      ENDDO
      ENDDO
      ENDDO
      ! -----------------------------
 
-    IF( rad_nudge .eq. 1 )                                     &
+    IF( rad_nudge .eq. 1 ) THEN                                   
+       print*,'rad_nudge activated!'
        CALL theta_relaxation( t_tendf, t, t_init,              &
                               mut, ph, phb,                    &
                               t_base, z_base,                  &
                               ids, ide, jds, jde, kds, kde,    &
                               ims, ime, jms, jme, kms, kme,    &
                               its, ite, jts, jte, kts, kte   )
+    ENDIF
 
   END IF forward_step
 
@@ -1084,7 +1152,10 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
                             ids,ide, jds,jde, kds,kde,                       &
                             ims,ime, jms,jme, kms,kme,                       &
                             ips,ipe, jps,jpe, kps,kpe,                       &
-                            its,ite, jts,jte, kts,kte                       )
+                            its,ite, jts,jte, kts,kte,                       &
+                            ! for testing
+                            adv_t_tend, damp2_t_tendf, diff2_t_tendf         &
+                                                                             )
 
    IMPLICIT NONE
 
@@ -1115,7 +1186,10 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
                                                                        w_save,  &
                                                                       ph_save,  &
                                                                        t_save,  &
-                                                                      h_diabatic
+                                                                   h_diabatic,  &
+                                                                   adv_t_tend,  &
+                                                                damp2_t_tendf,  &
+                                                                diff2_t_tendf
 
    REAL , DIMENSION( ims:ime , jms:jme ) ,         INTENT(IN   ) :: mut,       &
                                                                     msftx,     &
@@ -1129,6 +1203,7 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
 
 ! Local
    INTEGER :: i, j, k
+   REAL , DIMENSION( ims:ime , kms:kme, jms:jme  ) ::  total
 
 !<DESCRIPTION>
 !
@@ -1190,11 +1265,37 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
 
    DO j = jts,MIN(jte,jde-1)
    DO k = kts,kte-1
-   DO i = its,MIN(ite,ide-1)
-     IF(rk_step == 1)t_tendf(i,k,j) = t_tendf(i,k,j) +  t_save(i,k,j)
+   DO i = its,MIN(ite,ide-1)          
+     IF(rk_step == 1) THEN
+     t_tendf(i,k,j) = t_tendf(i,k,j) +  t_save(i,k,j) 
+     ENDIF
      ! divide by my to couple theta
+           !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+           !print*,'=========================='
+           !print*,'SUBROUTINE rk_addtend_dry'
+           !print*,'rk_step:',rk_step
+           !print*,'t_tend (including adv)=',t_tend(i,k,j)                    
+           !print*,'t_tendf (diff2+damp2)/msfty=',t_tendf(i,k,j)/msfty(i,j),'msfty=',msfty(i,j)
+           !print*,'mut*h_diabatic/msfty=',mut(i,j)*h_diabatic(i,k,j)/msfty(i,j)
+           !endif
       t_tend(i,k,j) =  t_tend(i,k,j) +  t_tendf(i,k,j)/msfty(i,j)  &
                                      +  mut(i,j)*h_diabatic(i,k,j)/msfty(i,j)
+           if (i.eq.1 .and. j.eq.111 .and. k.eq.75 .and. rk_step.eq.3) then
+           print*,'SUBROUTINE rk_addtend_dry: rk_step=',rk_step,'t_tendf=',t_tendf(i,k,j),'t_save=',t_save(i,k,j)
+           print*,'SUBROUTINE rk_addtend_dry: rk_step=',rk_step,'t_tend= t_tend+t_tendf(+t_save)+h_diabatic',t_tend(i,k,j)
+           endif
+           !print*,'t_tend= t_tend+t_tendf/msfty+mut*h_diabatic/msfty',t_tend(i,k,j)
+      !total(i,k,j) =  adv_t_tend(i,k,j) +(damp2_t_tendf(i,k,j)+diff2_t_tendf(i,k,j))/msfty(i,j)  &
+      !                               +  mut(i,j)*h_diabatic(i,k,j)/msfty(i,j)
+           !print*,'diagnosed'
+           !print*,'adv',adv_t_tend(i,k,j)
+           !print*,'(damp2)=',damp2_t_tendf(i,k,j)
+           !print*,'(diff2)=',diff2_t_tendf(i,k,j)
+           !print*,'(damp2+diff2)=',damp2_t_tendf(i,k,j)+diff2_t_tendf(i,k,j)
+           !print*,'diagnosed t_tend= adv+(dampf+diff2)/msfty+mut*h_diabatic/msfty',total(i,k,j)
+           !print*,'DIFF in tend',t_tend(i,k,j)-total(i,k,j)
+           !print*,'=========================='
+           !endif
      ! divide by my to couple heating
    ENDDO
    ENDDO

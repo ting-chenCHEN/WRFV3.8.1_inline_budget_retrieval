@@ -115,7 +115,7 @@ CONTAINS
       ! Added by TC Chen 2018 ------
         REAL , DIMENSION(ims:ime,jms:jme)            , INTENT(IN) ::       muus    , &
                                                                            muvs    , &
-                                                                           muts
+                                                                           muts     
       ! ------
 
       !  Time (s) since the beginning of the restart.
@@ -968,7 +968,7 @@ CONTAINS
 
 ! the subroutine below is added in /phys/module_diag_misc.F (TC Chen 2018)
 
-      CALL diagnose_tend_dt (  TH_TEND =grid%t_tend                 &
+      CALL diagnose_tend_dt (  TH_TEND =grid%th_tend                 &
                               ,TH_NEW  =grid%t_n, TH_OLD =grid%t_o &
                               ,U_TEND=grid%u_tend                    &
                               ,U_NEW =grid%u_n, U_OLD =grid%u_o      &
@@ -976,11 +976,14 @@ CONTAINS
                               ,V_NEW =grid%v_n, V_OLD =grid%v_o      &
                               ,W_TEND=grid%w_tend                    &
                               ,W_NEW =grid%w_n, W_OLD =grid%w_o      &
-                              ,TH=th_phy,ALT=grid%alt, AL=grid%al    &
+                              ,TH=grid%t_2,ALT=grid%alt, AL=grid%al  &
                               ,U=grid%u_2,V=grid%v_2,W=grid%w_2      &
                               ,MUUS=muus, MUUS_OLD=grid%muus_old     &
+                              ,MUUS_NEW=grid%muus_new                &
                               ,MUVS=muvs, MUVS_OLD=grid%muvs_old     &
+                              ,MUVS_NEW=grid%muvs_new                &
                               ,MUTS=muts, MUTS_OLD=grid%muts_old     &
+                              ,MUTS_NEW=grid%muts_new                &
                               ,DT=grid%dt,DX=grid%dx,DY=grid%dy      &
                                ! Dimension arguments
                               ,IDS=ids,IDE=ide, JDS=jds,JDE=jde      &

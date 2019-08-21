@@ -1,5 +1,12 @@
 !WRF:MEDIATION_LAYER:SOLVER
 
+!===(c) modification by TC Chen 2018-2019 ===
+! in SUBROUTINE first_rk_step_part2:
+! Retrieving 
+! (1) parameterized physics tendencies (in CALL update_phy_ten)
+! (2) the diffusion term (diff_opt=2) for 
+! potential temperature, ru, rv,rw  
+!============================================
 #define BENCH_START(A)
 #define BENCH_END(A)
 
@@ -651,8 +658,15 @@ BENCH_START(update_phy_ten_tim)
                            ims, ime, jms, jme, kms, kme,                    &
                            grid%i_start(ij), grid%i_end(ij),                &
                            grid%j_start(ij), grid%j_end(ij),                &
-                           k_start, k_end                               )
-
+                           k_start, k_end,                                  &
+                           ! === Added by TC Chen 2019 (c) ===
+                           ! for parameterized physics 
+                           grid%P_ra_t_tendf,  grid%P_bl_t_tendf,           &
+                           grid%P_bl_ru_tendf, grid%P_bl_rv_tendf,          &
+                           grid%P_cu_t_tendf, grid%P_cu_ru_tendf,           &
+                           grid%P_cu_rv_tendf, grid%P_shcu_t_tendf,         &
+                           grid%P_shcu_ru_tendf, grid%P_shcu_rv_tendf       )
+       
        END DO
        !$OMP END PARALLEL DO
 BENCH_END(update_phy_ten_tim)
@@ -759,8 +773,6 @@ BENCH_END(tke_rhs_tim)
 ! calculate vertical diffusion first and then horizontal
 ! (keep this order)
 
-       IF(config_flags%diff_opt .eq. 2) THEN
-
 !Added by TC Chen 2019 ------------------------
         DO ij = 1 , grid%num_tiles
 
@@ -772,12 +784,18 @@ BENCH_END(tke_rhs_tim)
               rv_tendf_old(i,k,j)=rv_tendf(i,k,j)
               rw_tendf_old(i,k,j)=rw_tendf(i,k,j)
               t_tendf_old(i,k,j) =t_tendf(i,k,j)
+              !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+              !print*,'=========================='
+              !print*,'t_tendf_old=', t_tendf_old(i,k,j)
+              !endif
            ENDDO
         ENDDO
         ENDDO
 
         ENDDO
 !----------------------------------------------
+
+       IF(config_flags%diff_opt .eq. 2) THEN
 
 
          IF (config_flags%bl_pbl_physics .eq. 0) THEN
@@ -848,6 +866,7 @@ BENCH_START(hor_diff_tim)
          !$OMP END PARALLEL DO
 BENCH_END(hor_diff_tim)
 
+       ENDIF
 ! ----Added by TC Chen 2019 ---------------------
         DO ij = 1 , grid%num_tiles
 
@@ -859,13 +878,17 @@ BENCH_END(hor_diff_tim)
               diff2_rv_tendf(i,k,j)=rv_tendf(i,k,j)-rv_tendf_old(i,k,j)
               diff2_rw_tendf(i,k,j)=rw_tendf(i,k,j)-rw_tendf_old(i,k,j)
               diff2_t_tendf(i,k,j) =t_tendf(i,k,j)-t_tendf_old(i,k,j)
+              !if (i.eq.1 .and. j.eq.111 .and. k.eq.70) then
+              !print*,'after diff2.....(in first_rk_step_part2.F)'
+              !print*,'t_tendf=', t_tendf(i,k,j)
+              !print*,'=========================='
+              !endif
            ENDDO
         ENDDO
         ENDDO
 
         ENDDO
 !------------------------------------------------
-       ENDIF
 
        IF ( grid%obs_nudge_opt .EQ. 1 .AND. grid%xtime <= grid%fdda_end ) THEN
 # ifdef DM_PARALLEL

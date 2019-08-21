@@ -1,5 +1,18 @@
 !WRF:MEDIATION_LAYER:SOLVER
 
+!=== (c) modification by TC Chen 2018-2019 ===
+
+! Adding inline budget retrieval for momentum (U,V,W),
+! (The retrieval follows the advances of dry-air-mass coupled momentum, but the
+! output budget terms are divided by dry-air-mass, thus with units of m s^(-2).)   
+! and potential temperature. 
+
+! The inline tendency term on the lhs of the budget equations is also added in
+! /phys/module_diagnostics_driver.F (again, all the budget terms are divided 
+! by dry-air-mass with a unit of m s^(-2) or K s^(-1))
+
+!=============================================
+
 SUBROUTINE solve_em ( grid , config_flags  &
 ! Arguments generated from Registry
 #include "dummy_new_args.inc"
@@ -796,6 +809,7 @@ BENCH_END(set_phys_bc_tim)
 ! LES_fix convert theta to theta_m: point 1  ! 28 January 2015
 
      IF ( ( config_flags%use_theta_m .EQ. 1 ) .AND. (P_Qv .GE. PARAM_FIRST_SCALAR) ) THEN
+        print*,'SUBROUTINE theta_to_thetam activated!'
         CALL theta_to_thetam ( grid%t_1 , moist_old(ims,kms,jms,P_qv) ,  &
                                t_tendf  , moist_tend(ims,kms,jms,P_qv) , &
                                grid%t_2 , moist(ims,kms,jms,P_qv) ,      &
@@ -892,6 +906,10 @@ BENCH_START(rk_tend_tim)
                          ,grid%ac_damp2_w_tend, grid%ac_damp2_t_tend                                           &
                          ,grid%ac_damp3_w_tend, grid%ac_diff2_t_tend                                           &
                          ,grid%ac_diff2_u_tend, grid%ac_diff2_v_tend, grid%ac_diff2_w_tend                     &
+                         ,grid%ac_P_ra_t_tend                                                                  &
+                         ,grid%ac_P_bl_t_tend, grid%ac_P_bl_u_tend, grid%ac_P_bl_v_tend                        &
+                         ,grid%ac_P_cu_t_tend, grid%ac_P_cu_u_tend, grid%ac_P_cu_v_tend                        &
+                         ,grid%ac_P_shcu_t_tend, grid%ac_P_shcu_u_tend, grid%ac_P_shcu_v_tend                  &
                                                                                                                )
 
      END DO
@@ -955,7 +973,7 @@ BENCH_START(relax_bdy_dry_tim)
 
 ! LES_fix convert theta to theta_m: nested or specified LBC
 !************************************************************************************************************************
-
+         print*,'SUBROUTINE relax_bdy_dry activated! in solve_em.F'
          CALL relax_bdy_dry ( config_flags,                                &
                               grid%u_save, grid%v_save, ph_save, grid%t_save,             &
                               w_save, mu_tend,                             & 
@@ -996,9 +1014,14 @@ BENCH_START(relax_bdy_dry_tim)
                             ips,ipe, jps,jpe, kps,kpe,                       &
                             grid%i_start(ij), grid%i_end(ij),                &
                             grid%j_start(ij), grid%j_end(ij),                &
-                            k_start, k_end                                  )
+                            k_start, k_end,                                  &
+                            ! for testing 
+                            grid%adv_t_tend, grid%damp2_t_tendf,             &
+                            grid%diff2_t_tendf                               &
+                                                                             )
 
        IF( config_flags%specified .or. config_flags%nested ) THEN 
+         print*,'SUBROUTINE spec_bdy_dry activated! in solve_em.F'
          CALL spec_bdy_dry ( config_flags,                                    &
                              grid%ru_tend, grid%rv_tend, ph_tend, t_tend,               &
                              rw_tend, mu_tend,                                &
@@ -1060,6 +1083,7 @@ BENCH_START(relax_bdy_dry_tim)
 ! must provide pattern.  mu_2, mub, msf* also passed in for coupling needed for tendecies.
 !---------------------------------------------------------------------------------------------
        IF( config_flags%specified .and. config_flags%perturb_bdy==1 ) THEN 
+         print*,'SUBROUTINE sepc_bdy_perturb(1) is activated! in solve_em.F'
          CALL spec_bdy_dry_perturb ( config_flags,                                 &
                              grid%ru_tend, grid%rv_tend, t_tend,                   &
                              grid%mu_2, grid%mub,                                  &
@@ -1077,6 +1101,7 @@ BENCH_START(relax_bdy_dry_tim)
        ENDIF
 
        IF( config_flags%specified .and. config_flags%perturb_bdy==2 ) THEN
+         print*,'SUBROUTINE sepc_bdy_perturb(2) is activated! in solve_em.F'
          CALL spec_bdy_dry_perturb ( config_flags,                                 &
                              grid%ru_tend, grid%rv_tend, t_tend,                   &
                              grid%mu_2, grid%mub,                                  &
@@ -1343,6 +1368,9 @@ BENCH_START(advance_uv_tim)
                            grid%cuv_ru_tend, grid%cuv_rv_tend,          &
                            grid%damp2_ru_tendf, grid%damp2_rv_tendf,    &
                            grid%diff2_ru_tendf, grid%diff2_rv_tendf,    &
+                           grid%P_bl_ru_tendf, grid%P_bl_rv_tendf,      &
+                           grid%P_cu_ru_tendf, grid%P_cu_rv_tendf,      &
+                           grid%P_shcu_ru_tendf, grid%P_shcu_rv_tendf,  &
                            ! added (accumulated) values
                            grid%ac_adv_u_tend, grid%ac_adv_v_tend,      &
                            grid%ac_pgf_u_tend_l, grid%ac_pgf_v_tend_l,  &
@@ -1350,7 +1378,10 @@ BENCH_START(advance_uv_tim)
                            grid%ac_cor_u_tend, grid%ac_cor_v_tend,      &
                            grid%ac_cuv_u_tend, grid%ac_cuv_v_tend,      &
                            grid%ac_damp2_u_tend, grid%ac_damp2_v_tend,  &
-                           grid%ac_diff2_u_tend, grid%ac_diff2_v_tend   &
+                           grid%ac_diff2_u_tend, grid%ac_diff2_v_tend,  &
+                           grid%ac_P_bl_u_tend, grid%ac_P_bl_v_tend,    &
+                           grid%ac_P_cu_u_tend, grid%ac_P_cu_v_tend,    &
+                           grid%ac_P_shcu_u_tend, grid%ac_P_shcu_v_tend &
                                                                                    )
 BENCH_END(advance_uv_tim)
 
@@ -1467,9 +1498,15 @@ BENCH_START(advance_mu_t_tim)
                           rk_step, rk_order,                           &
                           grid%adv_t_tend, grid%damp2_t_tendf,         &
                           grid%diff2_t_tendf,                          &
+                          grid%P_ra_t_tendf, grid%P_bl_t_tendf,        &
+                          grid%P_cu_t_tendf, grid%P_shcu_t_tendf,      &
                           ! added (accumulated) values
                           grid%ac_adv_t_tend_l, grid%ac_adv_t_tend_s,  &
-                          grid%ac_damp2_t_tend, grid%ac_diff2_t_tend   )
+                          grid%ac_damp2_t_tend, grid%ac_diff2_t_tend,  &
+                          grid%ac_P_ra_t_tend, grid%ac_P_bl_t_tend,    &
+                          grid%ac_P_cu_t_tend, grid%ac_P_shcu_t_tend,  &
+                          ! for testing 
+                          grid%h_diabatic                              )
 
 BENCH_END(advance_mu_t_tim)
        ENDDO
@@ -1521,7 +1558,7 @@ BENCH_START(spec_bdy_t_tim)
        DO ij = 1 , grid%num_tiles
 
          IF( config_flags%specified .or. config_flags%nested ) THEN
-
+           print*,'SUBROUTINE spec_bdyupdate activated! in solve_em.F'
            CALL spec_bdyupdate(grid%t_2, t_tend, dts_rk,        &
                                't'         , config_flags,      &
                                grid%spec_zone,                  &
@@ -1830,10 +1867,14 @@ BENCH_START(small_step_finish_tim)
                                grid%ac_pgf_u_tend_s, grid%ac_cor_u_tend,  &
                                grid%ac_cuv_u_tend, grid%ac_damp2_u_tend,  &
                                grid%ac_diff2_u_tend,                      &
+                               grid%ac_P_bl_u_tend, grid%ac_P_cu_u_tend,  &
+                               grid%ac_P_shcu_u_tend,                     &
                                grid%ac_adv_v_tend, grid%ac_pgf_v_tend_l,  &
                                grid%ac_pgf_v_tend_s, grid%ac_cor_v_tend,  &
                                grid%ac_cuv_v_tend, grid%ac_damp2_v_tend,  &
                                grid%ac_diff2_v_tend,                      &
+                               grid%ac_P_bl_v_tend, grid%ac_P_cu_v_tend,  &
+                               grid%ac_P_shcu_v_tend,                     &
                                grid%ac_adv_w_tend,                        &
                                grid%ac_pgbuoy_w_tend_l,                   &
                                grid%ac_pgbuoy_w_tend_s,                   &
@@ -1842,20 +1883,28 @@ BENCH_START(small_step_finish_tim)
                                grid%ac_damp3_w_tend, grid%ac_diff2_w_tend,&
                                grid%ac_adv_t_tend_l, grid%ac_adv_t_tend_s,&
                                grid%ac_damp2_t_tend, grid%ac_diff2_t_tend,&
+                               grid%ac_P_ra_t_tend, grid%ac_P_bl_t_tend,  &
+                               grid%ac_P_cu_t_tend, grid%ac_P_shcu_t_tend,&
                                !converted values
                                grid%u_tend_adv, grid%u_tend_pgf,          &
                                grid%u_tend_cor, grid%u_tend_cuv,          &
                                grid%u_tend_damp2, grid%u_tend_diff2,      &
+                               grid%u_tend_P_bl, grid%u_tend_P_cu,        &
+                               grid%u_tend_P_shcu,                        &
                                grid%v_tend_adv, grid%v_tend_pgf,          &
                                grid%v_tend_cor, grid%v_tend_cuv,          &
                                grid%v_tend_damp2, grid%v_tend_diff2,      &
+                               grid%v_tend_P_bl, grid%v_tend_P_cu,        &
+                               grid%v_tend_P_shcu,                        &
                                grid%w_tend_adv, grid%w_tend_pgbuoy,       &
                                grid%w_tend_damping,                       &
                                grid%w_tend_cor, grid%w_tend_cuv,          &
                                grid%w_tend_damp2, grid%w_tend_damp3,      &
                                grid%w_tend_diff2,                         &
-                               grid%t_tend_adv,grid%t_tend_diff2,         &
-                               grid%t_tend_damp2                          &
+                               grid%th_tend_adv,grid%th_tend_diff2,       &
+                               grid%th_tend_damp2,                        &
+                               grid%th_tend_P_ra, grid%th_tend_P_bl,      &
+                               grid%th_tend_P_cu, grid%th_tend_P_shcu     &
                                                                           )
 !  call  to set ru_m, rv_m and ww_m b.c's for PD advection
 
@@ -2991,6 +3040,7 @@ BENCH_END(tracer_adv_tim)
 
 
      IF ( ( config_flags%use_theta_m .EQ. 1 ) .AND. (P_Qv .GE. PARAM_FIRST_SCALAR) ) THEN
+        print*,'activated SUBROUTINE thetam_to_theta in solve_em.F'
         CALL thetam_to_theta ( grid%t_1 , moist_old(ims,kms,jms,P_qv) ,  &
                                grid%t_2 , moist(ims,kms,jms,P_qv) ,      &
                                ids, ide, jds, jde, kds, kde ,            &
@@ -3008,6 +3058,7 @@ BENCH_END(tracer_adv_tim)
                                 ips, ipe, jps, jpe, kps, kpe,     &
                                 its, ite, jts, jte,               &
                                 k_start    , k_end                )
+        print*,'activated SUBROUTINE thetam_to_theta in solve_em.F'
         CALL set_physical_bc3d( grid%t_2, 'p', config_flags,      &
                                 ids, ide, jds, jde, kds, kde,     &
                                 ims, ime, jms, jme, kms, kme,     &

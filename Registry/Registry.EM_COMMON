@@ -215,7 +215,7 @@ i1       real   w_save         ikj     dyn_em      1         Z
 state    real   w_subs         |       dyn_em      1         -      i3rh      "W_SUBS" "large-scale vertical velocity" "m s-1"
 state    real   w_subs_tend    |       dyn_em      1         -      i3rh      "W_SUBS_TEND" "tendency large-scale vertical velocity" "m s-1"
 
-# =====================================Added by TC Chen 2018/2019========================================
+# =================================== (c) Added by TC Chen 2018/2019 =======================================
 # == U momentum budgets ==   
 # U tedency term 
 state   real      u_tend               ikj     misc       1         X     hdu   "u_tend"                "U(mass-coupled) local tendency on u grid, divided by mass"
@@ -225,11 +225,15 @@ state   real      u_tend_cor           ikj     misc       1         X     hdu   
 state   real      u_tend_cuv           ikj     misc       1         X     hdu   "u_tend_cuv"            "curvature term for U"
 state   real      u_tend_damp2         ikj     misc       1         X     hdu   "u_tend_damp2"          "damp opt=2 term for U"
 state   real      u_tend_diff2         ikj     misc       1         X     hdu   "u_tend_diff2"          "diff opt=2 term for U"
+state   real      u_tend_P_bl          ikj     misc       1         X     hdu   "u_tend_P_bl"           "parameterized physics from planetary boundary layer scheme"
+state   real      u_tend_P_cu          ikj     misc       1         X     hdu   "u_tend_P_cu"           "parameterized physics from cumulus scheme"
+state   real      u_tend_P_shcu        ikj     misc       1         X     hdu   "u_tend_P_shcu"           "parameterized physics from indipendent shallow cumulus scheme"
 
-# other local computation (for checking)
+# other local computation (for checking only; can be ignored)
 state   real      u_n                  ikj     misc       1         X     -     "u_new"                 "U (for tendency calcu)"
 state   real      u_o                  ikj     misc       1         X     -     "u_old"                 "U _previus time step"
 state   real      muus_old             ij      misc       1         -     -     "muus_old"              ""
+state   real      muus_new             ij      misc       1         -     -     "muus_new"              ""
 #------transient calculation (updated every RK3) ----
 state   real      adv_ru_tend          ikj     misc       1         X     -     "adv_ru_tend"           ""
 state   real      pgf_ru_tend          ikj     misc       1         X     -     "pgf_ru_tend"           ""
@@ -237,6 +241,9 @@ state   real      cor_ru_tend          ikj     misc       1         X     -     
 state   real      cuv_ru_tend          ikj     misc       1         X     -     "cuv_ru_tend"           ""
 state   real      damp2_ru_tendf       ikj     misc       1         X     -     "damp2_ru_tendf"        ""
 state   real      diff2_ru_tendf       ikj     misc       1         X     -     "diff2_ru_tendf"        ""
+state   real      P_bl_ru_tendf        ikj     misc       1         X     -     "P_bl_ru_tendf"         ""
+state   real      P_cu_ru_tendf        ikj     misc       1         X     -     "P_cu_ru_tendf"         ""
+state   real      P_shcu_ru_tendf      ikj     misc       1         X     -     "P_shcu_ru_tendf"       ""
 
 #------accumulated values------
 state   real      ac_adv_u_tend        ikj     misc       1         X     -     "ac_adv_u_tend"         ""
@@ -246,6 +253,9 @@ state   real      ac_cor_u_tend        ikj     misc       1         X     -     
 state   real      ac_cuv_u_tend        ikj     misc       1         X     -     "ac_cuv_u_tend"         ""
 state   real      ac_damp2_u_tend      ikj     misc       1         X     -     "ac_damp2_u_tend"       ""
 state   real      ac_diff2_u_tend      ikj     misc       1         X     -     "ac_diff2_u_tend"       ""
+state   real      ac_P_bl_u_tend       ikj     misc       1         X     -     "ac_P_bl_u_tend"        ""
+state   real      ac_P_cu_u_tend       ikj     misc       1         X     -     "ac_P_cu_u_tend"        ""
+state   real      ac_P_shcu_u_tend     ikj     misc       1         X     -     "ac_P_shcu_u_tend"      ""
 
 #---------------------------------
 # == V momentum budgets ==   
@@ -257,11 +267,15 @@ state   real      v_tend_cor           ikj     misc       1         Y     hdu   
 state   real      v_tend_cuv           ikj     misc       1         Y     hdu   "v_tend_cuv"            "curvature term for V"
 state   real      v_tend_damp2         ikj     misc       1         Y     hdu   "v_tend_damp2"          "damp opt=2 term for V"
 state   real      v_tend_diff2         ikj     misc       1         Y     hdu   "v_tend_diff2"          "diff opt=2 term for V"
+state   real      v_tend_P_bl          ikj     misc       1         Y     hdu   "v_tend_P_bl"           "parameterized physics from planetary boundary layer scheme"
+state   real      v_tend_P_cu          ikj     misc       1         Y     hdu   "v_tend_P_cu"           "parameterized physics from cumulus scheme"
+state   real      v_tend_P_shcu        ikj     misc       1         Y     hdu   "v_tend_P_shcu"           "parameterized physics from indipendent shallow cumulus scheme"
 
-# other local computation (for checking)
+# other local computation (for checking only; can be ignored)
 state   real      v_n                  ikj    misc        1         Y     -     "v_new"                 "V (for tendency calcu)"
 state   real      v_o                  ikj    misc        1         Y     -     "v_old"                 "V _previus time step"
 state   real      muvs_old             ij     misc        1         -     -     "muvs_old"              ""
+state   real      muvs_new             ij     misc        1         -     -     "muvs_new"              ""
 #------transient calculation (updated every RK3) ----
 state   real      adv_rv_tend          ikj    misc        1         Y     -     "adv_rv_tend"           ""
 state   real      pgf_rv_tend          ikj    misc        1         Y     -     "pgf_rv_tend"           ""
@@ -269,6 +283,9 @@ state   real      cor_rv_tend          ikj    misc        1         Y     -     
 state   real      cuv_rv_tend          ikj    misc        1         Y     -     "cuv_rv_tend"           ""
 state   real      damp2_rv_tendf       ikj    misc        1         Y     -     "damp2_rv_tendf"        ""
 state   real      diff2_rv_tendf       ikj    misc        1         Y     -     "diff2_rv_tendf"        ""
+state   real      P_bl_rv_tendf        ikj     misc       1         Y     -     "P_bl_rv_tendf"         ""
+state   real      P_cu_rv_tendf        ikj     misc       1         Y     -     "P_cu_rv_tendf"         ""
+state   real      P_shcu_rv_tendf      ikj     misc       1         Y     -     "P_shcu_rv_tendf"       ""
 
 #------accumulated values------
 state   real      ac_adv_v_tend        ikj    misc        1         Y     -     "ac_adv_v_tend"         ""
@@ -278,6 +295,9 @@ state   real      ac_cor_v_tend        ikj    misc        1         Y     -     
 state   real      ac_cuv_v_tend        ikj    misc        1         Y     -     "ac_cuv_v_tend"         ""
 state   real      ac_damp2_v_tend      ikj    misc        1         Y     -     "ac_damp2_v_tend"       ""
 state   real      ac_diff2_v_tend      ikj    misc        1         Y     -     "ac_diff2_v_tend"       ""
+state   real      ac_P_bl_v_tend       ikj     misc       1         Y     -     "ac_P_bl_v_tend"        ""
+state   real      ac_P_cu_v_tend       ikj     misc       1         Y     -     "ac_P_cu_v_tend"        ""
+state   real      ac_P_shcu_v_tend     ikj     misc       1         Y     -     "ac_P_shcu_v_tend"      ""
 
 #---------------------------------
 # == W momentum budgets ==   
@@ -292,10 +312,13 @@ state   real      w_tend_damp2         ikj     misc       1         Z     hdu   
 state   real      w_tend_damp3         ikj     misc       1         Z     hdu   "w_tend_damp3"          "damp opt=3 term for W"
 state   real      w_tend_diff2         ikj     misc       1         Z     hdu   "w_tend_diff2"          "diff opt=2 term for W"
 
-# other local computation (for checking)
+# other local computation (for checking only; can be ignored)
 state   real      w_n                  ikj    misc        1         Z     -     "w_new"                 "W (for tendency calcu)"
 state   real      w_o                  ikj    misc        1         Z     -     "w_old"                 "W _previus time step"
 state   real      muts_old             ij     misc        1         -     -     "muts_old" ""
+state   real      muts_new             ij     misc        1         -     -     "muts_new" ""
+state   real      mut_old              ij     misc        1         -     -     "mut_old" ""
+state   real      mut_new              ij     misc        1         -     -     "mut_new" ""
 #------transient calculation (updated every RK3) ----
 state   real      adv_rw_tend          ikj    misc        1         Z     -     "adv_rw_tend"           ""
 state   real      pgbuoy_rw_tend       ikj    misc        1         Z     -     "pgbuoy_rw_tend"        ""
@@ -339,26 +362,39 @@ i1       real   t_tendf        ikj     dyn_em      1         -
 i1       real   t_2save        ikj     dyn_em      1         -   
 state    real   t_save         ikj     dyn_em      1         -      -        "t_save"
 
-# =====================================Added by TC Chen 2018/2019=================================
-# == th momentum budgets ==   
+# =================================== (c) Added by TC Chen 2018/2019 ================================
+# == th budgets ==   
 # th tedency term 
-state   real      t_tend               ikj     misc        1         -       hdu    "t_tend"              "dry th tedency"
-state   real      t_tend_adv           ikj     misc        1         -       hdu    "t_tend_adv"          "flux advection term for dry th tedency (large+acoustic steps)"
-state   real      t_tend_diff2         ikj     misc        1         -       hdu    "t_tend_diff2"        "diff opt=2 for dry th tedency"
-state   real      t_tend_damp2         ikj     misc        1         -       hdu    "t_tend_damp2"        "damp opt=2 for dry th tedency"
+state   real      th_tend               ikj     misc        1         -       hdu    "th_tend"              "dry th tedency"
+state   real      th_tend_adv           ikj     misc        1         -       hdu    "th_tend_adv"          "flux advection term for dry th tedency (large+acoustic steps)"
+state   real      th_tend_diff2         ikj     misc        1         -       hdu    "th_tend_diff2"        "diff opt=2 for dry th tedency"
+state   real      th_tend_damp2         ikj     misc        1         -       hdu    "th_tend_damp2"        "damp opt=2 for dry th tedency"
+state   real      th_tend_P_ra          ikj     misc        1         -       hdu    "th_tend_P_ra"         "parameterized physics from radiation scheme"
+state   real      th_tend_P_bl          ikj     misc        1         -       hdu    "th_tend_P_bl"         "parameterized physics from planetary boundary layer scheme"
+state   real      th_tend_P_cu          ikj     misc        1         -       hdu    "th_tend_P_cu"         "parameterized physics from cumulus scheme"
+state   real      th_tend_P_shcu        ikj     misc        1         -       hdu    "th_tend_P_shcu"       "parameterized physics from indipendent shallow cumulus scheme"
+# IMPORTANT NOTE: contribution to th budget by the microphysics is already termed as "h_diabatic". For th budget closure, this term has to be considered as well. 
 
-# other local computation (for checking)
+# other local computation (for checking only; can be ignored)
 state   real      t_n                  ikj     misc        1         -       -      "t_new"               "th (for tendency calcu)"
 state   real      t_o                  ikj     misc        1         -       -      "t_old"               "th _previus time step"
 #------transient calculation (updated every RK3) ----
 state   real      adv_t_tend           ikj     misc        1         -       -      "adv_t_tend"          ""
-state   real      diff2_t_tendf        ikj     misc        1         -       -      "diff2_t_tendf"        ""
+state   real      diff2_t_tendf        ikj     misc        1         -       -      "diff2_t_tendf"       ""
 state   real      damp2_t_tendf        ikj     misc        1         -       -      "damp2_t_tendf"       ""
+state   real      P_ra_t_tendf         ikj     misc        1         -       -      "P_ra_t_tendf"        ""
+state   real      P_bl_t_tendf         ikj     misc        1         -       -      "P_bl_t_tendf"        ""
+state   real      P_cu_t_tendf         ikj     misc        1         -       -      "P_cu_t_tendf"        ""
+state   real      P_shcu_t_tendf       ikj     misc        1         -       -      "P_shcu_t_tendf"      ""
 #------accumulated values------
 state   real      ac_adv_t_tend_l      ikj     misc        1         -       -      "ac_adv_t_tend_l"     ""
 state   real      ac_adv_t_tend_s      ikj     misc        1         -       -      "ac_adv_t_tend_s"     ""
 state   real      ac_diff2_t_tend      ikj     misc        1         -       -      "ac_diff2_t_tend"     ""
 state   real      ac_damp2_t_tend      ikj     misc        1         -       -      "ac_damp2_t_tend"     ""
+state   real      ac_P_ra_t_tend       ikj     misc        1         -       -      "ac_P_ra_t_tend"      ""
+state   real      ac_P_bl_t_tend       ikj     misc        1         -       -      "ac_P_bl_t_tend"      ""
+state   real      ac_P_cu_t_tend       ikj     misc        1         -       -      "ac_P_cu_t_tend"      ""
+state   real      ac_P_shcu_t_tend     ikj     misc        1         -       -      "ac_P_shcu_t_tend"    ""
 # ==================================================================================================
 
 state    real   th_upstream_x       |     dyn_em      1      -      i3rh     "TH_UPSTREAM_X" "upstream theta x-advection" "K s-1"

@@ -19,6 +19,15 @@ configure.wrf*
 rsync_exclude
 namelist.output
 *.log
+*.png
+*.py
+test/em_squall2d_y/*.txt
+test/em_squall2d_y/*.nc
+test/em_squall2d_y/wrfout*
+test/em_squall2d_y/wrfrst*
+*.txt
+external/io_int/diffwrf
+
 
 Registry/Registry
 Registry/io_boilerplate_temporary.inc
@@ -113,6 +122,7 @@ tools/fseeko64_test
 tools/fseeko_test
 tools/gen_comms.c
 tools/registry
+
 
 
 

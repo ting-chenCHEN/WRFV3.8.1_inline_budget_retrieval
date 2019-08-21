@@ -41,7 +41,12 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                       n_moist,n_scalar,config_flags,rk_step,adv_moist_cond, &
                       ids, ide, jds, jde, kds, kde,                         &
                       ims, ime, jms, jme, kms, kme,                         &
-                      its, ite, jts, jte, kts, kte                          )
+                      its, ite, jts, jte, kts, kte,                         &
+                      ! Added by TC Chen 2019
+                      P_ra_rt_tendf,                                        &
+                      P_bl_rt_tendf, P_bl_ru_tendf, P_bl_rv_tendf,          &
+                      P_cu_rt_tendf, P_cu_ru_tendf, P_cu_rv_tendf,          &
+                      P_shcu_rt_tendf, P_shcu_ru_tendf, P_shcu_rv_tendf     )
 !-------------------------------------------------------------------
    IMPLICIT NONE
 !-------------------------------------------------------------------
@@ -109,16 +114,67 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
 
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN  ) ::   & ! fire
                                                        rthfrten, &
-                                                       rqvfrten   
+                                                       rqvfrten  
+   !=== Added by TC Chen 2019 c.
+   REAL , DIMENSION(ims:ime , kms:kme, jms:jme),INTENT(  OUT) ::   &
+                                                         P_ra_rt_tendf, &
+                                                         P_bl_rt_tendf, &
+                                                         P_bl_ru_tendf, &
+                                                         P_bl_rv_tendf, &
+                                                         P_cu_rt_tendf, &
+                                                         P_cu_ru_tendf, &
+                                                         P_cu_rv_tendf, &
+                                                         P_shcu_rt_tendf, &
+                                                         P_shcu_ru_tendf, &
+                                                         P_shcu_rv_tendf
+   !local
+   REAL , DIMENSION(ims:ime , kms:kme, jms:jme) ::                  &
+                                                      rt_tendf_old, &
+                                                      ru_tendf_old, &
+                                                      rv_tendf_old 
+   
+   !======
 !------------------------------------------------------------------
 !  set up loop bounds for this grid's boundary conditions
 
+!  === c. Added by TC Chen 2019 ===
+!  saving the original value before adding the physics tendencies 
+!  for rt_tendf, ru_tendf, rv_tendf:  (CALL origin_XX_tendf). 
+!  Then, retrieving the parameterized physics tendencies by calculating 
+
+   CALL origin_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                        ids,ide, jds, jde, kds, kde,           &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+!  =================================
+   
    if (config_flags%ra_lw_physics .gt. 0 .or.                  &
        config_flags%ra_sw_physics .gt. 0)                      &
       CALL phy_ra_ten(config_flags,rt_tendf,RTHRATEN,          &
                       ids, ide, jds, jde, kds, kde,            &
                       ims, ime, jms, jme, kms, kme,            &
                       its, ite, jts, jte, kts, kte             )
+   
+!  === c. Added by TC Chen 2019 ===
+    CALL physics_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                          P_ra_rt_tendf,                         & 
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+!  =================================
+   CALL origin_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+   CALL origin_ru_tendf(ru_tendf, ru_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+   CALL origin_rv_tendf(rv_tendf, rv_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+!  =================================
 
    if (config_flags%bl_pbl_physics .gt. 0)                     &
       CALL phy_bl_ten(config_flags,rk_step,n_moist,n_scalar,   &
@@ -130,6 +186,36 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                       ids, ide, jds, jde, kds, kde,            &
                       ims, ime, jms, jme, kms, kme,            &
                       its, ite, jts, jte, kts, kte             )
+!  === c. Added by TC Chen 2019 ===
+    CALL physics_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                          P_bl_rt_tendf,                         &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+    CALL physics_ru_tendf(ru_tendf, ru_tendf_old, config_flags,  &
+                          P_bl_ru_tendf,                         &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+    CALL physics_rv_tendf(rv_tendf, rv_tendf_old, config_flags,  &
+                          P_bl_rv_tendf,                         &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+!  =================================
+   CALL origin_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+   CALL origin_ru_tendf(ru_tendf, ru_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+   CALL origin_rv_tendf(rv_tendf, rv_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+!  =================================
 
    if (config_flags%cu_physics .gt. 0)                         &
       CALL phy_cu_ten(config_flags,rk_step,n_moist,n_scalar,   &
@@ -142,6 +228,36 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                       ids, ide, jds, jde, kds, kde,            &
                       ims, ime, jms, jme, kms, kme,            &
                       its, ite, jts, jte, kts, kte             )
+!  === c. Added by TC Chen 2019 ===
+    CALL physics_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                          P_cu_rt_tendf,                         &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+    CALL physics_ru_tendf(ru_tendf, ru_tendf_old, config_flags,  &
+                          P_cu_ru_tendf,                         &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+    CALL physics_rv_tendf(rv_tendf, rv_tendf_old, config_flags,  &
+                          P_cu_rv_tendf,                         &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+!  =================================
+   CALL origin_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+   CALL origin_ru_tendf(ru_tendf, ru_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+   CALL origin_rv_tendf(rv_tendf, rv_tendf_old, config_flags,  &
+                        ids, ide, jds, jde, kds, kde,          &
+                        ims, ime, jms, jme, kms, kme,          &
+                        its, ite, jts, jte, kts, kte           )
+!  =================================
 
    if (config_flags%shcu_physics .gt. 0)                       &
       CALL phy_shcu_ten(config_flags,rk_step,n_moist,n_scalar, &
@@ -153,6 +269,24 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                       ids, ide, jds, jde, kds, kde,            &
                       ims, ime, jms, jme, kms, kme,            &
                       its, ite, jts, jte, kts, kte             )
+
+!  === c. Added by TC Chen 2019 ===
+    CALL physics_rt_tendf(rt_tendf, rt_tendf_old, config_flags,  &
+                          P_shcu_rt_tendf,                       &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+    CALL physics_ru_tendf(ru_tendf, ru_tendf_old, config_flags,  &
+                          P_shcu_ru_tendf,                       &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+    CALL physics_rv_tendf(rv_tendf, rv_tendf_old, config_flags,  &
+                          P_shcu_rv_tendf,                       &
+                          ids,ide, jds, jde, kds, kde,           &
+                          ims, ime, jms, jme, kms, kme,          &
+                          its, ite, jts, jte, kts, kte           )
+!  =================================
 
    if (config_flags%grid_fdda .gt. 0)                          &
       CALL phy_fg_ten(config_flags,rk_step,n_moist,            &
@@ -2272,5 +2406,318 @@ SUBROUTINE add_c2c_v(lvar,rvar,config_flags,                &
 END SUBROUTINE add_c2c_v
 
 #endif
+!======= Added by TC Chen 2019 (c) =================
+SUBROUTINE origin_rt_tendf(tendf,tendf_old, config_flags,   &
+                   ids,ide, jds, jde, kds, kde,             &
+                   ims, ime, jms, jme, kms, kme,            &
+                   its, ite, jts, jte, kts, kte             )
+!------------------------------------------------------------
+   IMPLICIT NONE
+!------------------------------------------------------------
+
+   TYPE(grid_config_rec_type),  INTENT(IN) :: config_flags
+
+   INTEGER , INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(IN   ) ::&
+                                                      tendf
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(  OUT) ::&
+                                                      tendf_old
+
+! LOCAL VARS
+   INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
+
+   i_start = its
+   i_end   = MIN(ite,ide-1)
+   j_start = jts
+   j_end   = MIN(jte,jde-1)
+   ktf = min(kte,kde-1)
+
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_start = MAX(ids+1,its)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_end   = MIN(ide-2,ite)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_start = MAX(jds+1,jts)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+
+   DO j = j_start,j_end
+   DO k = kts,ktf
+   DO i = i_start,i_end
+      tendf_old(i,k,j) = tendf(i,k,j)
+   ENDDO
+   ENDDO
+   ENDDO
+
+END SUBROUTINE origin_rt_tendf
+!---
+SUBROUTINE origin_ru_tendf( tendf,tendf_old, config_flags,  &
+                   ids,ide, jds, jde, kds, kde,             &
+                   ims, ime, jms, jme, kms, kme,            &
+                   its, ite, jts, jte, kts, kte             )
+!------------------------------------------------------------
+!------------------------------------------------------------
+   IMPLICIT NONE
+!------------------------------------------------------------
+
+   TYPE(grid_config_rec_type),  INTENT(IN   )    :: config_flags
+
+   INTEGER , INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(IN   ) ::&
+                                                      tendf
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(  OUT) ::&
+                                                      tendf_old
+
+! LOCAL VARS
+
+   INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
+
+   ktf=min(kte,kde-1)
+
+   i_start = its
+   i_end   = ite
+   j_start = jts
+   j_end   = MIN(jte,jde-1)
+
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_start = MAX(ids+1,its)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_end   = MIN(ide-1,ite)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_start = MAX(jds+1,jts)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = ite
+
+   DO j = j_start,j_end
+   DO k = kts,ktf
+   DO i = i_start,i_end
+      tendf_old(i,k,j) = tendf(i,k,j) 
+   ENDDO
+   ENDDO
+   ENDDO
+
+END SUBROUTINE origin_ru_tendf
+!---
+SUBROUTINE origin_rv_tendf(tendf, tendf_old,config_flags,   &
+                   ids, ide, jds, jde, kds, kde,            &
+                   ims, ime, jms, jme, kms, kme,            &
+                   its, ite, jts, jte, kts, kte             )
+!------------------------------------------------------------
+!------------------------------------------------------------
+   IMPLICIT NONE
+!------------------------------------------------------------
+
+   TYPE(grid_config_rec_type),  INTENT(IN   )    :: config_flags
+
+   INTEGER , INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(IN   ) ::&
+                                                      tendf
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(  OUT) ::&
+                                                      tendf_old
+
+! LOCAL VARS
+
+   INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
+
+   ktf=min(kte,kde-1)
+
+   i_start = its
+   i_end   = MIN(ite,ide-1)
+   j_start = jts
+   j_end   = jte
+
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_start = MAX(ids+1,its)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_end   = MIN(ide-2,ite)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_start = MAX(jds+1,jts)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+
+   DO j = j_start,j_end
+   DO k = kts,kte
+   DO i = i_start,i_end
+      tendf_old(i,k,j) = tendf(i,k,j) 
+   ENDDO
+   ENDDO
+   ENDDO
+
+END SUBROUTINE origin_rv_tendf
+!=======================================
+SUBROUTINE physics_rt_tendf(tendf, tendf_old, config_flags, &
+                   param_tendf,                             &
+                   ids,ide, jds, jde, kds, kde,             &
+                   ims, ime, jms, jme, kms, kme,            &
+                   its, ite, jts, jte, kts, kte             )
+!------------------------------------------------------------
+   IMPLICIT NONE
+!------------------------------------------------------------
+
+   TYPE(grid_config_rec_type),  INTENT(IN) :: config_flags
+
+   INTEGER , INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(IN   ) ::&
+                                                      tendf,&
+                                                  tendf_old
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(  OUT) ::&
+                                                param_tendf
+
+! LOCAL VARS
+   INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
+
+   i_start = its
+   i_end   = MIN(ite,ide-1)
+   j_start = jts
+   j_end   = MIN(jte,jde-1)
+   ktf = min(kte,kde-1)
+
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_start = MAX(ids+1,its)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_end   = MIN(ide-2,ite)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_start = MAX(jds+1,jts)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+
+   DO j = j_start,j_end
+   DO k = kts,ktf
+   DO i = i_start,i_end
+      param_tendf(i,k,j) = tendf(i,k,j)-tendf_old(i,k,j)
+   ENDDO
+   ENDDO
+   ENDDO
+
+END SUBROUTINE physics_rt_tendf
+!---
+SUBROUTINE physics_ru_tendf(tendf, tendf_old, config_flags, &
+                   param_tendf,                             &
+                   ids,ide, jds, jde, kds, kde,             &
+                   ims, ime, jms, jme, kms, kme,            &
+                   its, ite, jts, jte, kts, kte             )
+!------------------------------------------------------------
+!------------------------------------------------------------
+   IMPLICIT NONE
+!------------------------------------------------------------
+
+   TYPE(grid_config_rec_type),  INTENT(IN   )    :: config_flags
+
+   INTEGER , INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(IN   ) ::&
+                                                      tendf,&
+                                                  tendf_old
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(  OUT) ::&
+                                                param_tendf
+
+! LOCAL VARS
+
+   INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
+
+   ktf=min(kte,kde-1)
+
+   i_start = its
+   i_end   = ite
+   j_start = jts
+   j_end   = MIN(jte,jde-1)
+
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_start = MAX(ids+1,its)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_end   = MIN(ide-1,ite)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_start = MAX(jds+1,jts)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = ite
+
+   DO j = j_start,j_end
+   DO k = kts,ktf
+   DO i = i_start,i_end
+      param_tendf(i,k,j) = tendf(i,k,j)-tendf_old(i,k,j)
+   ENDDO
+   ENDDO
+   ENDDO
+
+END SUBROUTINE physics_ru_tendf
+!---
+SUBROUTINE physics_rv_tendf(tendf, tendf_old, config_flags, &
+                   param_tendf,                             &
+                   ids, ide, jds, jde, kds, kde,            &
+                   ims, ime, jms, jme, kms, kme,            &
+                   its, ite, jts, jte, kts, kte             )
+!------------------------------------------------------------
+!------------------------------------------------------------
+   IMPLICIT NONE
+!------------------------------------------------------------
+
+   TYPE(grid_config_rec_type),  INTENT(IN   )    :: config_flags
+
+   INTEGER , INTENT(IN   ) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(IN   ) ::&
+                                                      tendf,&
+                                                  tendf_old
+   REAL, DIMENSION(ims:ime,kms:kme,jms:jme),INTENT(  OUT) ::&
+                                                param_tendf
+
+! LOCAL VARS
+
+   INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
+
+   ktf=min(kte,kde-1)
+
+   i_start = its
+   i_end   = MIN(ite,ide-1)
+   j_start = jts
+   j_end   = jte
+
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_start = MAX(ids+1,its)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) i_end   = MIN(ide-2,ite)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_start = MAX(jds+1,jts)
+   IF ( config_flags%specified .or. &
+        config_flags%nested) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+
+   DO j = j_start,j_end
+   DO k = kts,kte
+   DO i = i_start,i_end
+      param_tendf(i,k,j) = tendf(i,k,j)-tendf_old(i,k,j)
+   ENDDO
+   ENDDO
+   ENDDO
+
+END SUBROUTINE physics_rv_tendf
+
 
 END MODULE module_physics_addtendc
