@@ -226,8 +226,8 @@ state   real      u_tend_cuv           ikj     misc       1         X     hdu   
 state   real      u_tend_damp2         ikj     misc       1         X     hdu   "u_tend_damp2"          "damp opt=2 term for U"
 state   real      u_tend_diff2         ikj     misc       1         X     hdu   "u_tend_diff2"          "diff opt=2 term for U"
 state   real      u_tend_P_bl          ikj     misc       1         X     hdu   "u_tend_P_bl"           "parameterized physics from planetary boundary layer scheme"
-state   real      u_tend_P_cu          ikj     misc       1         X     hdu   "u_tend_P_cu"           "parameterized physics from cumulus scheme"
-state   real      u_tend_P_shcu        ikj     misc       1         X     hdu   "u_tend_P_shcu"           "parameterized physics from indipendent shallow cumulus scheme"
+state   real      u_tend_P_cu          ikj     misc       1         X     hdu   "u_tend_P_cu"           "parameterized physics from cumulus scheme (cu_physics)"
+state   real      u_tend_P_shcu        ikj     misc       1         X     hdu   "u_tend_P_shcu"           "parameterized physics from independent shallow cumulus scheme (shcu_physics)"
 
 # other local computation (for checking only; can be ignored)
 state   real      u_n                  ikj     misc       1         X     -     "u_new"                 "U (for tendency calcu)"
